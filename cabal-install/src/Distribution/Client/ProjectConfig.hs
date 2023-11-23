@@ -1553,7 +1553,7 @@ readSourcePackageCabalFile verbosity pkgfilename content =
       unless (null warnings) $
         info verbosity (formatWarnings warnings)
       return pkg
-    (warnings, Left (mspecVersion, errors)) ->
+    (warnings, Left (mspecVersion, errors)) -> do
       throwIO $ CabalFileParseError pkgfilename content errors mspecVersion warnings
   where
     formatWarnings warnings =

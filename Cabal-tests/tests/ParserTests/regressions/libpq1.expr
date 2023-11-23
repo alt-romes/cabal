@@ -212,24 +212,28 @@ GenericPackageDescription {
                 (EarlierVersion
                   (mkVersion [0, 11])))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [4, 3]))
-            (EarlierVersion
-              (mkVersion [4, 13])))
-          mainLibSet,
-        Dependency
-          (PackageName "bytestring")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [0, 9, 1, 0]))
-            (EarlierVersion
-              (mkVersion [0, 11])))
-          mainLibSet],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [4, 3]))
+              (EarlierVersion
+                (mkVersion [4, 13])))
+            mainLibSet,
+          Dependency
+            (PackageName "bytestring")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [0, 9, 1, 0]))
+              (EarlierVersion
+                (mkVersion [0, 11])))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = [
         CondBranch {
           condBranchCondition =
@@ -305,16 +309,20 @@ GenericPackageDescription {
                       (EarlierVersion
                         (mkVersion [2, 8])))
                     mainLibSet],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [
-              Dependency
-                (PackageName "unix")
-                (IntersectVersionRanges
-                  (OrLaterVersion
-                    (mkVersion [2, 4, 2, 0]))
-                  (EarlierVersion
-                    (mkVersion [2, 8])))
-                mainLibSet],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [
+                Dependency
+                  (PackageName "unix")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [2, 4, 2, 0]))
+                    (EarlierVersion
+                      (mkVersion [2, 8])))
+                  mainLibSet],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Nothing},
         CondBranch {
@@ -391,16 +399,20 @@ GenericPackageDescription {
                       (EarlierVersion
                         (mkVersion [2, 7])))
                     mainLibSet],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [
-              Dependency
-                (PackageName "Win32")
-                (IntersectVersionRanges
-                  (OrLaterVersion
-                    (mkVersion [2, 2, 0, 2]))
-                  (EarlierVersion
-                    (mkVersion [2, 7])))
-                mainLibSet],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [
+                Dependency
+                  (PackageName "Win32")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [2, 2, 0, 2]))
+                    (EarlierVersion
+                      (mkVersion [2, 7])))
+                  mainLibSet],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Nothing},
         CondBranch {
@@ -476,8 +488,12 @@ GenericPackageDescription {
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
                 targetBuildDepends = [],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Just
             CondNode {
@@ -543,8 +559,12 @@ GenericPackageDescription {
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
                   targetBuildDepends = [],
+                  targetPrivateBuildDepends = [],
                   mixins = []}},
-              condTreeConstraints = [],
+              condTreeConstraints =
+              Dependencies {
+                publicDependencies = [],
+                privateDependencies = []},
               condTreeComponents = [
                 CondBranch {
                   condBranchCondition =
@@ -612,8 +632,12 @@ GenericPackageDescription {
                         PerCompilerFlavor [] [],
                         customFieldsBI = [],
                         targetBuildDepends = [],
+                        targetPrivateBuildDepends = [],
                         mixins = []}},
-                    condTreeConstraints = [],
+                    condTreeConstraints =
+                    Dependencies {
+                      publicDependencies = [],
+                      privateDependencies = []},
                     condTreeComponents = []},
                   condBranchIfFalse = Just
                     CondNode {
@@ -679,8 +703,12 @@ GenericPackageDescription {
                           PerCompilerFlavor [] [],
                           customFieldsBI = [],
                           targetBuildDepends = [],
+                          targetPrivateBuildDepends = [],
                           mixins = []}},
-                      condTreeConstraints = [],
+                      condTreeConstraints =
+                      Dependencies {
+                        publicDependencies = [],
+                        privateDependencies = []},
                       condTreeComponents = [
                         CondBranch {
                           condBranchCondition =
@@ -748,8 +776,12 @@ GenericPackageDescription {
                                 PerCompilerFlavor [] [],
                                 customFieldsBI = [],
                                 targetBuildDepends = [],
+                                targetPrivateBuildDepends = [],
                                 mixins = []}},
-                            condTreeConstraints = [],
+                            condTreeConstraints =
+                            Dependencies {
+                              publicDependencies = [],
+                              privateDependencies = []},
                             condTreeComponents = []},
                           condBranchIfFalse =
                           Nothing}]}}]}}]},
