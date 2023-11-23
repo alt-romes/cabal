@@ -122,12 +122,16 @@ GenericPackageDescription {
               (PackageName "ghc-prim")
               (OrLaterVersion (mkVersion [0]))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "ghc-prim")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "ghc-prim")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = [
         CondBranch {
           condBranchCondition =
@@ -207,20 +211,24 @@ GenericPackageDescription {
                     (PackageName "containers")
                     (OrLaterVersion (mkVersion [0]))
                     mainLibSet],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [
-              Dependency
-                (PackageName "base")
-                (IntersectVersionRanges
-                  (OrLaterVersion
-                    (mkVersion [4, 10]))
-                  (EarlierVersion
-                    (mkVersion [4, 11])))
-                mainLibSet,
-              Dependency
-                (PackageName "containers")
-                (OrLaterVersion (mkVersion [0]))
-                mainLibSet],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [
+                Dependency
+                  (PackageName "base")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [4, 10]))
+                    (EarlierVersion
+                      (mkVersion [4, 11])))
+                  mainLibSet,
+                Dependency
+                  (PackageName "containers")
+                  (OrLaterVersion (mkVersion [0]))
+                  mainLibSet],
+              privateDependencies = []},
             condTreeComponents = [
               CondBranch {
                 condBranchCondition =
@@ -292,12 +300,16 @@ GenericPackageDescription {
                           (PackageName "Win32")
                           (OrLaterVersion (mkVersion [0]))
                           mainLibSet],
+                      targetPrivateBuildDepends = [],
                       mixins = []}},
-                  condTreeConstraints = [
-                    Dependency
-                      (PackageName "Win32")
-                      (OrLaterVersion (mkVersion [0]))
-                      mainLibSet],
+                  condTreeConstraints =
+                  Dependencies {
+                    publicDependencies = [
+                      Dependency
+                        (PackageName "Win32")
+                        (OrLaterVersion (mkVersion [0]))
+                        mainLibSet],
+                    privateDependencies = []},
                   condTreeComponents = []},
                 condBranchIfFalse = Nothing}]},
           condBranchIfFalse = Nothing}]},
@@ -372,13 +384,17 @@ GenericPackageDescription {
                 (PackageName "HUnit")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "HUnit")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "HUnit")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = [
           CondBranch {
             condBranchCondition =
@@ -446,9 +462,13 @@ GenericPackageDescription {
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
                   targetBuildDepends = [],
+                  targetPrivateBuildDepends = [],
                   mixins = []},
                 testCodeGenerators = []},
-              condTreeConstraints = [],
+              condTreeConstraints =
+              Dependencies {
+                publicDependencies = [],
+                privateDependencies = []},
               condTreeComponents = []},
             condBranchIfFalse = Nothing},
           CondBranch {
@@ -529,21 +549,25 @@ GenericPackageDescription {
                       (PackageName "containers")
                       (OrLaterVersion (mkVersion [0]))
                       mainLibSet],
+                  targetPrivateBuildDepends = [],
                   mixins = []},
                 testCodeGenerators = []},
-              condTreeConstraints = [
-                Dependency
-                  (PackageName "base")
-                  (IntersectVersionRanges
-                    (OrLaterVersion
-                      (mkVersion [4, 10]))
-                    (EarlierVersion
-                      (mkVersion [4, 11])))
-                  mainLibSet,
-                Dependency
-                  (PackageName "containers")
-                  (OrLaterVersion (mkVersion [0]))
-                  mainLibSet],
+              condTreeConstraints =
+              Dependencies {
+                publicDependencies = [
+                  Dependency
+                    (PackageName "base")
+                    (IntersectVersionRanges
+                      (OrLaterVersion
+                        (mkVersion [4, 10]))
+                      (EarlierVersion
+                        (mkVersion [4, 11])))
+                    mainLibSet,
+                  Dependency
+                    (PackageName "containers")
+                    (OrLaterVersion (mkVersion [0]))
+                    mainLibSet],
+                privateDependencies = []},
               condTreeComponents = [
                 CondBranch {
                   condBranchCondition =
@@ -615,13 +639,17 @@ GenericPackageDescription {
                             (PackageName "Win32")
                             (OrLaterVersion (mkVersion [0]))
                             mainLibSet],
+                        targetPrivateBuildDepends = [],
                         mixins = []},
                       testCodeGenerators = []},
-                    condTreeConstraints = [
-                      Dependency
-                        (PackageName "Win32")
-                        (OrLaterVersion (mkVersion [0]))
-                        mainLibSet],
+                    condTreeConstraints =
+                    Dependencies {
+                      publicDependencies = [
+                        Dependency
+                          (PackageName "Win32")
+                          (OrLaterVersion (mkVersion [0]))
+                          mainLibSet],
+                      privateDependencies = []},
                     condTreeComponents = []},
                   condBranchIfFalse = Nothing},
                 CondBranch {
@@ -694,13 +722,17 @@ GenericPackageDescription {
                             (PackageName "Win32")
                             (OrLaterVersion (mkVersion [0]))
                             mainLibSet],
+                        targetPrivateBuildDepends = [],
                         mixins = []},
                       testCodeGenerators = []},
-                    condTreeConstraints = [
-                      Dependency
-                        (PackageName "Win32")
-                        (OrLaterVersion (mkVersion [0]))
-                        mainLibSet],
+                    condTreeConstraints =
+                    Dependencies {
+                      publicDependencies = [
+                        Dependency
+                          (PackageName "Win32")
+                          (OrLaterVersion (mkVersion [0]))
+                          mainLibSet],
+                      privateDependencies = []},
                     condTreeComponents = []},
                   condBranchIfFalse = Nothing}]},
             condBranchIfFalse = Nothing}]}],
