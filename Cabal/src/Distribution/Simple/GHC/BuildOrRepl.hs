@@ -10,7 +10,7 @@ import Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.GHC.Build
-  ( checkNeedsRecompilation
+  ( checkExtraSourceNeedsRecompilation
   , componentGhcOptions
   , getRPaths
   , isDynamic
@@ -252,13 +252,20 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
               clbi
               relLibTargetDir
               filename
-          vanillaSrcOpts
+          vanillaSrcOpts =
             -- Dynamic GHC requires C sources to be built
             -- with -fPIC for REPL to work. See #2207.
-            | isGhcDynamic && wantDyn = baseSrcOpts{ghcOptFPic = toFlag True}
-            | otherwise = baseSrcOpts
+            (if isGhcDynamic && wantDyn
+               then baseSrcOpts{ghcOptFPic = toFlag True}
+               else baseSrcOpts)
+                -- We generate dependency information for C and C++ files,
+                -- then, when checking if a source needs recompilation, we look
+                -- for a source.ext.d file and use the dependency information
+                -- to recompile if a dependency (like a header) is out of date.
+                { ghcOptCcOptions = "-MMD":ghcOptCcOptions baseSrcOpts
+                , ghcOptCxxOptions = "-MMD":ghcOptCxxOptions baseSrcOpts }
           runGhcProgIfNeeded opts = do
-            needsRecomp <- checkNeedsRecompilation filename opts
+            needsRecomp <- checkExtraSourceNeedsRecompilation filename opts
             when needsRecomp $ runGhcProg opts
           profSrcOpts =
             vanillaSrcOpts

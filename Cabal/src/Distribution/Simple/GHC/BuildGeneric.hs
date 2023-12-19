@@ -20,7 +20,7 @@ import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.GHC.Build
-  ( checkNeedsRecompilation
+  ( checkExtraSourceNeedsRecompilation
   , componentGhcOptions
   , exeTargetName
   , flibBuildName
@@ -600,20 +600,19 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     buildExtraSources mkSrcOpts wantDyn = traverse_ $ buildExtraSource mkSrcOpts wantDyn
     buildExtraSource mkSrcOpts wantDyn filename = do
       let baseSrcOpts =
-            mkSrcOpts
-              verbosity
-              implInfo
-              lbi
-              bnfo
-              clbi
-              tmpDir
-              filename
+            mkSrcOpts verbosity implInfo lbi bnfo clbi tmpDir filename
           vanillaSrcOpts =
-            if isGhcDynamic && wantDyn
+            (if isGhcDynamic && wantDyn
               then -- Dynamic GHC requires C/C++ sources to be built
               -- with -fPIC for REPL to work. See #2207.
                 baseSrcOpts{ghcOptFPic = toFlag True}
-              else baseSrcOpts
+              else baseSrcOpts)
+                -- We generate dependency information for C and C++ files,
+                -- then, when checking if a source needs recompilation, we look
+                -- for a source.ext.d file and use the dependency information
+                -- to recompile if a dependency (like a header) is out of date.
+                { ghcOptCcOptions = "-MMD":ghcOptCcOptions baseSrcOpts
+                , ghcOptCxxOptions = "-MMD":ghcOptCxxOptions baseSrcOpts }
           profSrcOpts =
             vanillaSrcOpts
               `mappend` mempty
@@ -636,7 +635,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
           odir = fromFlag (ghcOptObjDir opts)
 
       createDirectoryIfMissingVerbose verbosity True odir
-      needsRecomp <- checkNeedsRecompilation filename opts
+      needsRecomp <- checkExtraSourceNeedsRecompilation filename opts
       when needsRecomp $
         runGhcProg opts
 

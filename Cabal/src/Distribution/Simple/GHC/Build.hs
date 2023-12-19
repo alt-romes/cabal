@@ -1,7 +1,7 @@
 module Distribution.Simple.GHC.Build
   ( getRPaths
   , runReplOrWriteFlags
-  , checkNeedsRecompilation
+  , checkExtraSourceNeedsRecompilation
   , replNoLoad
   , componentGhcOptions
   , supportsDynamicToo
@@ -39,7 +39,7 @@ import Distribution.Verbosity
 import Distribution.Version
 import System.Directory
   ( createDirectoryIfMissing
-  , getCurrentDirectory
+  , getCurrentDirectory, doesFileExist
   )
 import System.FilePath
   ( isRelative
@@ -47,6 +47,11 @@ import System.FilePath
   , takeExtension
   , (<.>)
   , (</>)
+  )
+import qualified Text.Parsec as P
+import Text.Parsec.String
+  ( Parser
+  , parseFromFile
   )
 
 exeTargetName :: Platform -> Executable -> String
@@ -159,12 +164,59 @@ getObjectFileName filename opts = oname
     oext = fromFlagOrDefault "o" (ghcOptObjSuffix opts)
     oname = odir </> replaceExtension filename oext
 
--- | Returns True if the modification date of the given source file is newer than
--- the object file we last compiled for it, or if no object file exists yet.
-checkNeedsRecompilation :: FilePath -> GhcOptions -> IO Bool
-checkNeedsRecompilation filename opts = filename `moreRecentFile` oname
+-- | Determines if an extra build sources (e.g. C, Asm, Cmm) requires
+-- recompilation, during build (e.g. @'gbuild'@).
+--
+-- Returns True if the modification date of the given source file or any of its
+-- depedencies (such as a C header file) is newer than the object file we last
+-- compiled for it, if no object file exists yet, or if no dependency
+-- information exists yet either.
+--
+-- To check whether dependencies have been updated:
+--
+--    * When compiling the extra sources, we pass `-optc-MMD -optcxx-MMD` to
+--      generate a `.d` dependency file. These dependencies include the main
+--      source and non-system header files (transitively) included in the source.
+--
+--    * When checking needs recompilation (here), we read the `.d` file and
+--    recursively check whether the dependencies have been updated since the
+--    object file was created.
+checkExtraSourceNeedsRecompilation :: FilePath -> GhcOptions -> IO Bool
+checkExtraSourceNeedsRecompilation filename opts = do
+  let ext = takeExtension filename
+  if ext == ".c" || ext == ".cpp" then do
+    exists <- doesFileExist dname
+    if not exists then
+      return True
+    else do
+      -- The .o dependencies always include the original source, so checking
+      -- if any dependency is more recent than the object file includes checking
+      -- if the source file is more recent than its object.
+      deps <- parseMakeDependencies dname
+      or <$> traverse (`moreRecentFile` oname) deps
+  else
+    filename `moreRecentFile` oname
   where
+    -- The dependency information is at oname.d because ghc passes `-o oname` to
+    -- the C compiler, and -MMD appends `.d` to the name specified with `-o`
+    dname = oname <.> "d"
     oname = getObjectFileName filename opts
+
+parseMakeDependencies :: FilePath -> IO [FilePath]
+parseMakeDependencies path =
+  either (fail . show) return
+    =<< parseFromFile parseMakeDeps path
+  where
+    parseMakeDeps :: Parser [FilePath]
+    parseMakeDeps = P.manyTill P.anyToken (P.char ':') *> spacesOrEscapeNls *>
+      P.many (parsePath <* spacesOrEscapeNls)
+
+    parsePath :: Parser FilePath
+    parsePath = P.many1 (P.satisfy (not . isSpace))
+
+    spacesOrEscapeNls :: Parser ()
+    spacesOrEscapeNls = P.skipMany (P.space <|> P.char '\\')
+
 
 -- | Calculate the RPATHs for the component we are building.
 --
