@@ -124,7 +124,7 @@ import GHC.Exts (Any)
 import Unsafe.Coerce
 
 import System.Directory (doesFileExist)
-import System.FilePath ((<.>), (</>))
+import System.FilePath ((<.>), (</>), isAbsolute, splitDirectories, normalise)
 
 --------------------------------------------------------------------------------
 -- SetupHooks
@@ -826,8 +826,7 @@ applyComponentDiff verbosity comp (ComponentDiff diff)
 --------------------------------------------------------------------------------
 -- Running pre-processors and code generators
 
--- | Run all preprocessors and code generators specified in
--- 'SetupHooks'.
+-- | Run a collection of fine-grained build rules.
 --
 -- This function should only be called internally within @Cabal@, as it is used
 -- to implement the (legacy) Setup.hs interface. The build tool
@@ -855,7 +854,15 @@ executeRules verbosity lbi tgtInfo rulesFromInputs inputs = do
             return $ Just (deps, unsafeCoerce res :: Any)
   -- Create a build graph of all the rules, with static and dynamic dependencies
   -- as edges.
+  (badRules, allRules0) <- partitionEithers
+                         . map normaliseRule
+                         . fst
+                         <$> getRulesAndMonitors
+  -- Throw an error if any rule input/outputs are invalid, e.g.
+  -- refer to files outside of the project.
+  for_ (NE.nonEmpty badRules) $ errorOut . InvalidLocations
   let
+    allRules = zip [1..] allRules0
     (ruleGraph, ruleFromVertex, vertexFromRuleId) =
       Graph.graphFromEdges
         [ (rule, rId, nub $ mapMaybe directRuleDependencyMaybe allDeps)
@@ -996,6 +1003,61 @@ ruleOutputsLocation (Rule{results = rs}) fp = any (== fp) rs
 -- | Is the file we depend on missing?
 missingDep :: Location -> IO Bool
 missingDep (base, fp) = not <$> doesFileExist (base </> fp)
+
+normaliseRule :: Rule -> Either InvalidRuleLocations Rule
+normaliseRule r@( Rule { dependencies = deps, results = reslts })
+  | null badDeps && null badResults
+  = Right $
+    r { dependencies = deps'
+      , results      = reslts' }
+  | otherwise
+  = Left $
+    InvalidRuleLocations
+      { invalidRuleLocationsRule = r
+      , invalidRuleInputLocations = badDeps
+      , invalidRuleOutputLocations = badResults }
+  where
+    deps'   = map normaliseLocation deps
+    reslts' = fmap normaliseLocation reslts
+    badDeps = mapMaybe (\ l -> (l,) <$> badInputLocationMaybe l) deps'
+    badResults = mapMaybe (\ l -> (l,) <$> badOutputLocationMaybe l) $ NE.toList reslts'
+
+badInputLocationMaybe :: Location -> Maybe InvalidRuleInputLocationReason
+badInputLocationMaybe (base, _)
+  | isAbsolute base
+  = Just $ InputLocationNotRelative
+  | pathGoesBackwards base
+  = Just $ InputLocationOutsidePackage
+  | otherwise
+  = Nothing
+
+badOutputLocationMaybe :: Location -> Maybe InvalidRuleOutputLocationReason
+badOutputLocationMaybe (base, _)
+  | isAbsolute base
+  = Just $ OutputLocationNotRelative
+  | pathGoesBackwards base
+  = Just $ OutputLocationOutsidePackage
+  -- SetupHooks TODO: check whether the path lies inside
+  -- a valid output directory such as 'autogenComponentModulesDir'.
+  -- (NB: this will require passing in additional arguments to the function.)
+  | otherwise
+  = Nothing
+
+-- | Does the given relative path go backwards outside of the base directory
+-- it starts in?
+pathGoesBackwards :: FilePath -> Bool
+-- SetupHooks TODO: this does not account for symlinks, but
+-- using 'canonicalizePath' seems overkill.
+pathGoesBackwards fp = go 0 (splitDirectories fp)
+  where
+    go :: Int -> [FilePath] -> Bool
+    go i [] = i < 0
+    go i (".." : rest) = go (i-1) rest
+    go i ("." : rest)  = go i rest
+    go i (_ : rest)    = go (i+1) rest
+
+normaliseLocation :: Location -> Location
+normaliseLocation (base, fp) = (normalise base, fp)
 
 --------------------------------------------------------------------------------
 -- Compatibility with HookedBuildInfo.
