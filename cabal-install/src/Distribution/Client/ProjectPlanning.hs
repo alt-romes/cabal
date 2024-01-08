@@ -1520,6 +1520,7 @@ elaborateInstallPlan
   -> StoreDirLayout
   -> SolverInstallPlan
   -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
+  -- ^ All the packages listed in this project
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
   -> ProjectConfigShared
@@ -1536,7 +1537,7 @@ elaborateInstallPlan
   distDirLayout@DistDirLayout{..}
   storeDirLayout@StoreDirLayout{storePackageDBStack}
   solverPlan
-  localPackages
+  projectPackages
   sourcePackageHashes
   defaultInstallDirs
   sharedPackageConfig
@@ -2304,11 +2305,7 @@ elaborateInstallPlan
         global `mappend` local `mappend` perpkg
         where
           global = f allPackagesConfig
-          local
-            | isLocalToProject pkg =
-                f localPackagesConfig
-            | otherwise =
-                mempty
+          local = f localPackagesConfig
           perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
 
       inplacePackageDbs =
@@ -2344,11 +2341,11 @@ elaborateInstallPlan
           (packageId pkg)
           pkgsLocalToProject
 
+      -- \| Determine the packages local to the project from the list of
+      -- project packages
       pkgsLocalToProject :: Set PackageId
       pkgsLocalToProject =
-        Set.fromList (catMaybes (map shouldBeLocal localPackages))
-      -- TODO: localPackages is a misnomer, it's all project packages
-      -- here is where we decide which ones will be local!
+        Set.fromList (catMaybes (map shouldBeLocal projectPackages))
 
       pkgsUseSharedLibrary :: Set PackageId
       pkgsUseSharedLibrary =
@@ -2413,6 +2410,9 @@ elaborateInstallPlan
 
 -- TODO: Drop matchPlanPkg/matchElabPkg in favor of mkCCMapping
 
+-- | Determine if a given package in this project is local to the project, as
+-- opposed to a package referred to by name e.g. in a source-repository-stanza,
+-- or an installed package
 shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
 shouldBeLocal NamedPackage{} = Nothing
 shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of

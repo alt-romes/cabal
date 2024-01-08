@@ -3,9 +3,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- | cabal-install CLI command: build
+-- | cabal-install CLI command: install
 module Distribution.Client.CmdInstall
-  ( -- * The @build@ CLI and action
+  ( -- * The @install@ CLI and action
     installCommand
   , installAction
 
