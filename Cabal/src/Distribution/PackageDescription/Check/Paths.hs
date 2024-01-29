@@ -164,7 +164,7 @@ checkGlob
   :: Monad m
   => CabalField -- .cabal field we are checking.
   -> FilePath -- glob filepath pattern
-  -> CheckM m (Maybe Glob)
+  -> CheckM m (Maybe FilePathGlobRel)
 checkGlob title pat = do
   ver <- asksCM ccSpecVersion
 

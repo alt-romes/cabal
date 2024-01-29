@@ -6,7 +6,7 @@ module UnitTests.Distribution.Client.Glob (tests) where
 import Distribution.Client.Compat.Prelude hiding (last)
 import Prelude ()
 
-import Distribution.Client.Glob
+import Distribution.Simple.Glob
 import Distribution.Utils.Structured (structureHash)
 import UnitTests.Distribution.Client.ArbitraryInstances ()
 
@@ -22,9 +22,9 @@ tests =
   , testGroup
       "Structured hashes"
       [ testCase "GlobPiece" $ structureHash (Proxy :: Proxy GlobPiece) @?= Fingerprint 0xd5e5361866a30ea2 0x31fbfe7b58864782
-      , testCase "FilePathGlobRel" $ structureHash (Proxy :: Proxy FilePathGlobRel) @?= Fingerprint 0x76fa5bcb865a8501 0xb152f68915316f98
+      , testCase "FilePathGlobRel" $ structureHash (Proxy :: Proxy FilePathGlobRel) @?= Fingerprint 0xe260ba155c75dff4 0x8bbedbb21037a03b
       , testCase "FilePathRoot" $ structureHash (Proxy :: Proxy FilePathRoot) @?= Fingerprint 0x713373d51426ec64 0xda7376a38ecee5a5
-      , testCase "FilePathGlob" $ structureHash (Proxy :: Proxy FilePathGlob) @?= Fingerprint 0x3c11c41f3f03a1f0 0x96e69d85c37d0024
+      , testCase "FilePathGlob" $ structureHash (Proxy :: Proxy FilePathGlob) @?= Fingerprint 0xb0bd71fd87b02400 0x5bc1892a3bb3f21b
       ]
   ]
 

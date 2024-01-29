@@ -61,8 +61,8 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.FileMonitor
-import Distribution.Client.Glob hiding (matchFileGlob)
-import qualified Distribution.Client.Glob as Glob (matchFileGlob)
+import Distribution.Simple.Glob hiding (matchFileGlob)
+import qualified Distribution.Simple.Glob as Glob (matchFileGlob)
 
 import Distribution.Simple.Utils (debug)
 

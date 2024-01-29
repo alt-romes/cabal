@@ -59,9 +59,6 @@ module Distribution.Client.ProjectConfig
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.Glob
-  ( isTrivialFilePathGlob
-  )
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.RebuildMonad
@@ -72,6 +69,9 @@ import Distribution.Client.VCS
   , knownVCSs
   , syncSourceRepos
   , validateSourceRepos
+  )
+import Distribution.Simple.Glob
+  ( isTrivialFilePathGlob
   )
 
 import Distribution.Client.BuildReports.Types

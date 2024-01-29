@@ -65,9 +65,9 @@ import Control.Monad.State (StateT, mapStateT)
 import qualified Control.Monad.State as State
 import Control.Monad.Trans (MonadIO, liftIO)
 
-import Distribution.Client.Glob
 import Distribution.Client.Utils (MergeResult (..), mergeBy)
 import Distribution.Compat.Time
+import Distribution.Simple.Glob
 import Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import Distribution.Utils.Structured (Tag (..), structuredEncode)
 import System.Directory
@@ -1050,6 +1050,7 @@ buildMonitorStateGlobRel
     dirEntries <- getDirectoryContents absdir
     dirMTime <- getModTime absdir
     case globPath of
+      GlobDirRecursive{} -> error "Monitoring directory-recursive globs (i.e. ../**/...) is currently unsupported"
       GlobDir glob globPath' -> do
         subdirs <-
           filterM (\subdir -> doesDirectoryExist (absdir </> subdir)) $

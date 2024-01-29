@@ -119,7 +119,6 @@ library
         Distribution.Client.GZipUtils
         Distribution.Client.GenBounds
         Distribution.Client.Get
-        Distribution.Client.Glob
         Distribution.Client.GlobalFlags
         Distribution.Client.Haddock
         Distribution.Client.HashValue

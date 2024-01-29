@@ -170,7 +170,7 @@ checkPackageFilesGPD verbosity gpd root =
 
     checkPreIO =
       CheckPreDistributionOps
-        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (root </> fp) g
+        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (Just $ specVersion $ packageDescription gpd) (root </> fp) g
         , getDirectoryContentsM = System.Directory.getDirectoryContents . relative
         }
 
@@ -854,7 +854,8 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
       | otherwise = []
 
     -- If there's a missing directory in play, since our globs don't
-    -- (currently) support disjunction, that will always mean there are
+    -- (currently) support disjunction, (ROMES:TODO: We do now...)
+    -- that will always mean there are
     -- no matches. The no matches error in this case is strictly less
     -- informative than the missing directory error.
     withoutNoMatchesWarning (GlobMatch _) = True
@@ -969,9 +970,9 @@ pd2gpd pd = gpd
 -- present in our .cabal file.
 checkMissingDocs
   :: Monad m
-  => [Glob] -- data-files globs.
-  -> [Glob] -- extra-source-files globs.
-  -> [Glob] -- extra-doc-files globs.
+  => [FilePathGlobRel] -- data-files globs.
+  -> [FilePathGlobRel] -- extra-source-files globs.
+  -> [FilePathGlobRel] -- extra-doc-files globs.
   -> CheckM m ()
 checkMissingDocs dgs esgs edgs = do
   extraDocSupport <- (>= CabalSpecV1_18) <$> asksCM ccSpecVersion
@@ -1012,10 +1013,6 @@ checkMissingDocs dgs esgs edgs = do
         return (mcs ++ pcs)
     )
   where
-    -- From Distribution.Simple.Glob.
-    globMatches :: [GlobResult a] -> [a]
-    globMatches input = [a | GlobMatch a <- input]
-
     checkDoc
       :: Bool -- Cabal spec ≥ 1.18?
       -> [FilePath] -- Desirables.

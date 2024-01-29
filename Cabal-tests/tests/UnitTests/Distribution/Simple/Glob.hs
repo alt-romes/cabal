@@ -101,13 +101,13 @@ testMatchesVersion version pat expected = do
   where
     isEqual = (==) `on` (sort . fmap (fmap normalise))
     checkPure globPat = do
-      let actual = mapMaybe (fileGlobMatches globPat) sampleFileNames
+      let actual = mapMaybe (\p -> (p <$) <$> fileGlobMatches version globPat p) sampleFileNames
       unless (sort expected == sort actual) $
         assertFailure $ "Unexpected result (pure matcher): " ++ show actual
     checkIO globPat =
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
         makeSampleFiles tmpdir
-        actual <- runDirFileGlob Verbosity.normal tmpdir globPat
+        actual <- runDirFileGlob Verbosity.normal (Just version) tmpdir globPat
         unless (isEqual actual expected) $
           assertFailure $ "Unexpected result (impure matcher): " ++ show actual
 

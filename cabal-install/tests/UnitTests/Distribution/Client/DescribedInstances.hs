@@ -8,12 +8,13 @@ import Distribution.Client.Compat.Prelude
 import Data.List ((\\))
 import Distribution.Described
 
+import Distribution.Simple.Glob (FilePathGlob)
+
 import Distribution.Types.PackageId (PackageIdentifier)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.VersionRange (VersionRange)
 
 import Distribution.Client.BuildReports.Types (InstallOutcome, Outcome)
-import Distribution.Client.Glob (FilePathGlob)
 import Distribution.Client.IndexUtils.ActiveRepos (ActiveRepoEntry, ActiveRepos, CombineStrategy)
 import Distribution.Client.IndexUtils.IndexState (RepoIndexState, TotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp (Timestamp)

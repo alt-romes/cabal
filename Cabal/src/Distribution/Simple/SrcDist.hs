@@ -55,7 +55,7 @@ import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Flag
-import Distribution.Simple.Glob (matchDirFileGlobWithDie)
+import Distribution.Simple.Glob
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
 import Distribution.Simple.Setup.SDist

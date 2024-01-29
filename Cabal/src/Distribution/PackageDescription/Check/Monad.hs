@@ -48,7 +48,7 @@ import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Package (packageName)
 import Distribution.PackageDescription.Check.Warning
 import Distribution.Simple.BuildToolDepends (desugarBuildToolSimple)
-import Distribution.Simple.Glob (Glob, GlobResult)
+import Distribution.Simple.Glob
 import Distribution.Types.ExeDependency (ExeDependency)
 import Distribution.Types.GenericPackageDescription
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency)
@@ -101,7 +101,7 @@ data CheckPackageContentOps m = CheckPackageContentOps
 -- in case in the future we can obtain the same infos other than from IO
 -- (e.g. a VCS work tree).
 data CheckPreDistributionOps m = CheckPreDistributionOps
-  { runDirFileGlobM :: FilePath -> Glob -> m [GlobResult FilePath]
+  { runDirFileGlobM :: FilePath -> FilePathGlobRel -> m [GlobResult FilePath]
   , getDirectoryContentsM :: FilePath -> m [FilePath]
   }
 

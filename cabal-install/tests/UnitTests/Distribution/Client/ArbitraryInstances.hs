@@ -27,12 +27,12 @@ import Prelude ()
 import Data.Char (isLetter)
 import Data.List ((\\))
 
+import Distribution.Simple.Glob (FilePathGlob (..), FilePathGlobRel (..), FilePathRoot (..), GlobPiece (..))
 import Distribution.Simple.Setup
 import Distribution.Types.Flag (mkFlagAssignment)
 
 import Distribution.Client.BuildReports.Types (BuildReport, InstallOutcome, Outcome, ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
-import Distribution.Client.Glob (FilePathGlob (..), FilePathGlobRel (..), FilePathRoot (..), GlobPiece (..))
 import Distribution.Client.IndexUtils.ActiveRepos (ActiveRepoEntry (..), ActiveRepos (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp (Timestamp, epochTimeToTimestamp)
@@ -403,6 +403,9 @@ instance Arbitrary FilePathGlobRel where
       : [ GlobDir (getGlobPieces glob') pathglob'
         | (glob', pathglob') <- shrink (GlobPieces glob, pathglob)
         ]
+  shrink (GlobDirRecursive glob) =
+    GlobDirTrailing
+      : [GlobFile (getGlobPieces glob') | glob' <- shrink (GlobPieces glob)]
 
 newtype GlobPieces = GlobPieces {getGlobPieces :: [GlobPiece]}
   deriving (Eq)
