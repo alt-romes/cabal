@@ -148,6 +148,7 @@ matchFileGlobRel root glob =
     ( \case
         GlobMatch a -> Just a
         GlobWarnMultiDot a -> Just a
+        GlobMatchesDirectory a -> Just a
         GlobMissingDirectory{} -> Nothing
     )
     <$> runDirFileGlob silent Nothing root glob
@@ -284,7 +285,7 @@ instance Parsec FilePathGlobRel where
       parsecPath = do
         glob <- parsecGlob
         dirSep *> (GlobDir glob <$> parsecPath <|> pure (GlobDir glob GlobDirTrailing)) <|> pure (GlobFile glob)
-      -- TODO: We could support parsing recursive directory search syntax
+      -- We could support parsing recursive directory search syntax
       -- @**@ here too, rather than just in 'parseFileGlob'
 
       dirSep :: CabalParsing m => m ()
@@ -413,7 +414,9 @@ data GlobResult a
     --   exist. The directory will be as it appears in the glob (i.e.,
     --   relative to the directory passed to 'matchDirFileGlob', and,
     --   for 'data-files', relative to 'data-dir').
-    GlobMissingDirectory FilePath
+    GlobMissingDirectory a
+  | -- | The glob matched a directory when we were looking for files only. It didn't match a file!
+    GlobMatchesDirectory a
   deriving (Show, Eq, Ord, Functor)
 
 -- | Extract the matches from a list of 'GlobResult's.
@@ -450,6 +453,7 @@ matchDirFileGlobWithDie verbosity rip version dir filepath = case parseFileGlob 
     let missingDirectories =
           [missingDir | GlobMissingDirectory missingDir <- results]
         matches = globMatches results
+        directoryMatches = [a | GlobMatchesDirectory a <- results]
 
     let errors :: [String]
         errors =
@@ -462,11 +466,22 @@ matchDirFileGlobWithDie verbosity rip version dir filepath = case parseFileGlob 
           | missingDir <- missingDirectories
           ]
             ++ [ "filepath wildcard '" ++ filepath ++ "' does not match any files."
-               | null matches
+               | null matches && null directoryMatches
+               -- we don't error out on directory matches, simply warn about them and ignore.
                ]
 
+        warns :: [String]
+        warns =
+          [ "Ignoring directory '" ++ path ++ "'" ++ " listed in a Cabal package field which should only include files (not directories)."
+          | path <- directoryMatches
+          ]
+
     if null errors
-      then return matches
+      then do
+        unless (null warns) $
+          warn verbosity $
+            unlines warns
+        return matches
       else rip verbosity $ MatchDirFileGlobErrors errors
 
 -- | Match files against a pre-parsed glob, starting in a directory.
@@ -523,17 +538,28 @@ runDirFileGlob verbosity mspec rawRoot pat = do
               -- when a cabal spec version is passed as an argument), we
               -- disallow matching a @GlobFile@ against a directory, preferring
               -- @GlobDir dir GlobDirTrailing@ to specify a directory match.
-              shouldMatch <- maybe (return True) (const $ doesFileExist (root </> dir </> s)) mspec
+              isFile <- maybe (return True) (const $ doesFileExist (root </> dir </> s)) mspec
+              let match = (dir </> s <$) <$> doesGlobMatch glob s
               return $
-                if shouldMatch
-                  then (dir </> s <$) <$> doesGlobMatch glob s
-                  else Nothing
+                if isFile
+                  then match
+                  else case match of
+                    Just (GlobMatch x) -> Just $ GlobMatchesDirectory x
+                    Just (GlobWarnMultiDot x) -> Just $ GlobMatchesDirectory x
+                    Just (GlobMatchesDirectory x) -> Just $ GlobMatchesDirectory x
+                    Just (GlobMissingDirectory x) -> Just $ GlobMissingDirectory x -- this should never match, unless you are in a file-delete-heavy concurrent setting i guess
+                    Nothing -> Nothing
           )
           entries
     go (GlobDirRecursive glob) dir = do
       entries <- getDirectoryContentsRecursive (root </> dir)
       return $
-        mapMaybe (\s -> (dir </> s <$) <$> doesGlobMatch glob (takeFileName s)) entries
+        mapMaybe
+          ( \s -> do
+              globMatch <- doesGlobMatch glob (takeFileName s)
+              pure ((dir </> s) <$ globMatch)
+          )
+          entries
     go (GlobDir glob globPath) dir = do
       entries <- getDirectoryContents (root </> dir)
       subdirs <-
@@ -601,6 +627,8 @@ checkNameMatches spec glob candidate
   | otherwise = empty
 
 -- | How/does the glob match the given filepath, according to the cabal version?
+-- Since this is pure, we don't make a distinction between matching on
+-- directories or files (i.e. this function won't return 'GlobMatchesDirectory')
 fileGlobMatches :: CabalSpecVersion -> FilePathGlobRel -> FilePath -> Maybe (GlobResult ())
 fileGlobMatches version g path = go g (splitDirectories path)
   where

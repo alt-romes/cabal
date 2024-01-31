@@ -170,7 +170,7 @@ checkPackageFilesGPD verbosity gpd root =
 
     checkPreIO =
       CheckPreDistributionOps
-        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (Just $ specVersion $ packageDescription gpd) (root </> fp) g
+        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (Just . specVersion $ packageDescription gpd) (root </> fp) g
         , getDirectoryContentsM = System.Directory.getDirectoryContents . relative
         }
 
@@ -853,14 +853,14 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
           [PackageDistSuspiciousWarn $ GlobNoMatch title fp]
       | otherwise = []
 
-    -- If there's a missing directory in play, since our globs don't
-    -- (currently) support disjunction, (ROMES:TODO: We do now...)
-    -- that will always mean there are
+    -- If there's a missing directory in play, since globs in Cabal packages
+    -- don't (currently) support disjunction, that will always mean there are
     -- no matches. The no matches error in this case is strictly less
     -- informative than the missing directory error.
     withoutNoMatchesWarning (GlobMatch _) = True
     withoutNoMatchesWarning (GlobWarnMultiDot _) = False
     withoutNoMatchesWarning (GlobMissingDirectory _) = True
+    withoutNoMatchesWarning (GlobMatchesDirectory _) = True
 
     getWarning :: GlobResult FilePath -> Maybe PackageCheck
     getWarning (GlobMatch _) = Nothing
@@ -872,6 +872,7 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
       Just $ PackageDistSuspiciousWarn (GlobExactMatch title fp file)
     getWarning (GlobMissingDirectory dir) =
       Just $ PackageDistSuspiciousWarn (GlobNoDir title fp dir)
+    getWarning (GlobMatchesDirectory _) = Nothing -- is handled elsewhere if relevant, it is not necessarily a problem
 
 -- ------------------------------------------------------------
 -- Other exports
