@@ -89,7 +89,7 @@ import Distribution.Client.ProjectPlanning
   ( storePackageInstallDirs'
   )
 import Distribution.Client.ProjectPlanning.Types
-  ( ElaboratedInstallPlan
+  ( ElaboratedInstallPlan, showElaboratedInstallPlan
   )
 import Distribution.Client.RebuildMonad
   ( runRebuild
@@ -589,6 +589,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
         InstallCommand
 
     buildCtx <- constructProjectBuildContext verbosity (baseCtx{installedPackages = Just installedIndex'}) targetSelectors
+    print ("buildCtx", showElaboratedInstallPlan $ elaboratedPlanToExecute buildCtx, "installedPackages", installedIndex', "orig", installedPackages baseCtx)
 
     printPlan verbosity baseCtx buildCtx
     let installCfg = InstallCfg verbosity baseCtx buildCtx platform compiler configFlags clientInstallFlags
@@ -793,6 +794,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
 
       return (targets, hackageNames)
 
+-- | Here we are, here we are already building the local package to install
 constructProjectBuildContext
   :: Verbosity
   -> ProjectBaseContext

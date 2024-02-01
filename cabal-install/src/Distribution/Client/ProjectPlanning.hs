@@ -517,6 +517,7 @@ rebuildInstallPlan
   -> CabalDirLayout
   -> ProjectConfig
   -> [PackageSpecifier UnresolvedSourcePackage]
+  -- ^ Packages in this project
   -> Maybe InstalledPackageIndex
   -> IO
       ( ElaboratedInstallPlan -- with store packages
@@ -534,7 +535,7 @@ rebuildInstallPlan
     }
   CabalDirLayout
     { cabalStoreDirLayout
-    } = \projectConfig localPackages mbInstalledPackages ->
+    } = \projectConfig projectPackages mbInstalledPackages ->
     runRebuild distProjectRootDirectory $ do
       progsearchpath <- liftIO $ getSystemSearchPath
       let projectConfigMonitored = projectConfig{projectConfigBuildOnly = mempty}
@@ -545,7 +546,7 @@ rebuildInstallPlan
         fileMonitorImprovedPlan
         -- react to changes in the project config,
         -- the package .cabal files and the path
-        (projectConfigMonitored, localPackages, progsearchpath)
+        (projectConfigMonitored, projectPackages, progsearchpath)
         $ do
           -- And so is the elaborated plan that the improved plan based on
           (elaboratedPlan, elaboratedShared, totalIndexState, activeRepos) <-
@@ -553,7 +554,7 @@ rebuildInstallPlan
               verbosity
               fileMonitorElaboratedPlan
               ( projectConfigMonitored
-              , localPackages
+              , projectPackages
               , progsearchpath
               )
               $ do
@@ -563,7 +564,7 @@ rebuildInstallPlan
                   phaseRunSolver
                     projectConfig
                     compilerEtc
-                    localPackages
+                    projectPackages
                     (fromMaybe mempty mbInstalledPackages)
                 ( elaboratedPlan
                   , elaboratedShared
@@ -573,7 +574,7 @@ rebuildInstallPlan
                     compilerEtc
                     pkgConfigDB
                     solverPlan
-                    localPackages
+                    projectPackages
 
                 phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
                 return (elaboratedPlan, elaboratedShared, totalIndexState, activeRepos)
@@ -775,7 +776,7 @@ rebuildInstallPlan
         (compiler, platform, progdb)
         pkgConfigDB
         solverPlan
-        localPackages = do
+        projectPackages = do
           liftIO $ debug verbosity "Elaborating the install plan..."
 
           sourcePackageHashes <-
@@ -798,7 +799,7 @@ rebuildInstallPlan
                 distDirLayout
                 cabalStoreDirLayout
                 solverPlan
-                localPackages
+                projectPackages
                 sourcePackageHashes
                 installDirs
                 projectConfigShared
@@ -2344,8 +2345,9 @@ elaborateInstallPlan
       -- \| Determine the packages local to the project from the list of
       -- project packages
       pkgsLocalToProject :: Set PackageId
-      pkgsLocalToProject =
-        Set.fromList (catMaybes (map shouldBeLocal projectPackages))
+      pkgsLocalToProject = traceShow ("pkgsLocalToProject", xs) xs
+        where
+          xs = Set.fromList (catMaybes (map shouldBeLocal projectPackages))
 
       pkgsUseSharedLibrary :: Set PackageId
       pkgsUseSharedLibrary =
