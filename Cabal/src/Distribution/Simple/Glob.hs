@@ -185,6 +185,9 @@ matchGlob = goStart
 
 -- * Parsing & printing
 
+-- syntax (version) ->                    -> interpreter (version)
+-- syntax           -> semantic (version) -> interpreter
+
 --------------------------------------------------------------------------------
 -- Filepaths with globs may be parsed in the special context is globbing in
 -- cabal package fields, such as `data-files`. In that case, we restrict the
@@ -524,42 +527,36 @@ runDirFileGlob verbosity mspec rawRoot pat = do
     joinedPrefix = joinPath prefixSegments
 
     -- The glob matching function depends on whether we care about the cabal version or not
-    doesGlobMatch :: Glob -> String -> Maybe (GlobResult ())
-    doesGlobMatch glob str = case mspec of
-      Just spec -> checkNameMatches spec glob str
-      Nothing -> if matchGlob glob str then Just (GlobMatch ()) else Nothing
+    doesGlobMatch :: Glob -> FilePath -> String -> IO (Maybe (GlobResult FilePath))
+    doesGlobMatch glob dir str = do
+      case mspec of
+        Nothing -> do
+          return $ if matchGlob glob str then Just (GlobMatch (dir </> str)) else Nothing
+        Just spec -> do
+          let match = fmap (dir </> str <$) $ checkNameMatches spec glob str
 
+          -- precondition: the filepath exists
+          isFile <- doesFileExist (root </> dir </> str)
+
+          -- When running a glob from a Cabal package description (i.e.
+          -- when a cabal spec version is passed as an argument), we
+          -- disallow matching a @GlobFile@ against a directory, preferring
+          -- @GlobDir dir GlobDirTrailing@ to specify a directory match.
+          let adapt (GlobMatch x) = GlobMatchesDirectory x
+              adapt (GlobWarnMultiDot x) = GlobMatchesDirectory x
+              adapt (GlobMatchesDirectory x) = GlobMatchesDirectory x
+              -- this should never match, unless you are in a file-delete-heavy concurrent setting i guess
+              adapt (GlobMissingDirectory x) = GlobMissingDirectory x
+
+          return $ if isFile then match else fmap adapt match
+
+    go :: FilePathGlobRel -> FilePath -> IO [GlobResult FilePath]
     go (GlobFile glob) dir = do
       entries <- getDirectoryContents (root </> dir)
-      catMaybes
-        <$> mapM
-          ( \s -> do
-              -- When running a glob from a Cabal package description (i.e.
-              -- when a cabal spec version is passed as an argument), we
-              -- disallow matching a @GlobFile@ against a directory, preferring
-              -- @GlobDir dir GlobDirTrailing@ to specify a directory match.
-              isFile <- maybe (return True) (const $ doesFileExist (root </> dir </> s)) mspec
-              let match = (dir </> s <$) <$> doesGlobMatch glob s
-              return $
-                if isFile
-                  then match
-                  else case match of
-                    Just (GlobMatch x) -> Just $ GlobMatchesDirectory x
-                    Just (GlobWarnMultiDot x) -> Just $ GlobMatchesDirectory x
-                    Just (GlobMatchesDirectory x) -> Just $ GlobMatchesDirectory x
-                    Just (GlobMissingDirectory x) -> Just $ GlobMissingDirectory x -- this should never match, unless you are in a file-delete-heavy concurrent setting i guess
-                    Nothing -> Nothing
-          )
-          entries
+      catMaybes <$> mapM (doesGlobMatch glob dir) entries
     go (GlobDirRecursive glob) dir = do
       entries <- getDirectoryContentsRecursive (root </> dir)
-      return $
-        mapMaybe
-          ( \s -> do
-              globMatch <- doesGlobMatch glob (takeFileName s)
-              pure ((dir </> s) <$ globMatch)
-          )
-          entries
+      catMaybes <$> for entries (doesGlobMatch glob dir . takeFileName)
     go (GlobDir glob globPath) dir = do
       entries <- getDirectoryContents (root </> dir)
       subdirs <-
@@ -598,32 +595,31 @@ isRecursiveInRoot (GlobDirRecursive _) = True
 isRecursiveInRoot _ = False
 
 -- | Check how the string matches the glob under this cabal version
-checkNameMatches :: CabalSpecVersion -> Glob -> String -> Maybe (GlobResult ())
+checkNameMatches :: CabalSpecVersion -> Glob -> String -> Maybe (GlobResult FilePath)
 checkNameMatches spec glob candidate
   -- Check if glob matches in its general form
-  | matchGlob glob candidate =
+  | enableMultidot spec && matchGlob glob candidate =
       -- if multidot is supported, then this is a clean match
-      if enableMultidot spec
-        then pure (GlobMatch ())
-        else -- if not, issue a warning saying multidot is needed for the match
-
-          let (_, candidateExts) = splitExtensions $ takeFileName candidate
-              extractExts :: Glob -> Maybe String
-              extractExts [] = Nothing
-              extractExts [Literal lit]
-                -- Any literal terminating a glob, and which does have an extension,
-                -- returns that extension. Otherwise, recurse until Nothing is returned.
-                | let ext = takeExtensions lit
-                , ext /= "" =
-                    Just ext
-              extractExts (_ : x) = extractExts x
-           in case extractExts glob of
-                Just exts
-                  | exts == candidateExts ->
-                      return (GlobMatch ())
-                  | exts `isSuffixOf` candidateExts ->
-                      return (GlobWarnMultiDot ())
-                _ -> return (GlobMatch ())
+      pure (GlobMatch candidate)
+  | matchGlob glob candidate =
+      -- if not, issue a warning saying multidot is needed for the match
+      let (_, candidateExts) = splitExtensions $ takeFileName candidate
+          extractExts :: Glob -> Maybe String
+          extractExts [] = Nothing
+          extractExts [Literal lit]
+            -- Any literal terminating a glob, and which does have an extension,
+            -- returns that extension. Otherwise, recurse until Nothing is returned.
+            | let ext = takeExtensions lit
+            , ext /= "" =
+                Just ext
+          extractExts (_ : x) = extractExts x
+       in case extractExts glob of
+            Just exts
+              | exts == candidateExts ->
+                  return (GlobMatch candidate)
+              | exts `isSuffixOf` candidateExts ->
+                  return (GlobWarnMultiDot candidate)
+            _ -> return (GlobMatch candidate)
   | otherwise = empty
 
 -- | How/does the glob match the given filepath, according to the cabal version?
@@ -632,8 +628,10 @@ checkNameMatches spec glob candidate
 fileGlobMatches :: CabalSpecVersion -> FilePathGlobRel -> FilePath -> Maybe (GlobResult ())
 fileGlobMatches version g path = go g (splitDirectories path)
   where
-    go GlobDirTrailing [] = Just (GlobMatch ())
-    go (GlobFile glob) [file] = checkNameMatches version glob file
+    go GlobDirTrailing [] =
+      Just (GlobMatch ())
+    go (GlobFile glob) [file] =
+      checkNameMatches version glob file
     go (GlobDirRecursive glob) dirs
       | [] <- reverse dirs =
           Nothing -- @dir/**/x.txt@ should not match @dir/hello@
