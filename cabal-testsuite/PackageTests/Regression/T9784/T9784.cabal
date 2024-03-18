@@ -1,0 +1,18 @@
+Wabal-version: 3.0
+name: T9784
+version: 1.0
+build-type: Custom
+
+custom-setup
+  setup-depends: base, Cabal
+
+library
+  default-language: Haskell2010
+  build-depends: base
+  exposed-modules: A
+
+executable exe
+  default-language: Haskell2010
+  build-depends: T9784, base
+  hs-source-dirs: exe
+  main-is: Main.hs
