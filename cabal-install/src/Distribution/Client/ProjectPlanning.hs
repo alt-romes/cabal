@@ -1899,7 +1899,7 @@ elaborateInstallPlan
               external_lib_dep_sids = CD.select (== compSolverName) deps0
               external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
 
-              external_exe_dep_sids_raw = [(sid, Nothing) | sid <- external_exe_dep_sids]
+              external_exe_dep_sids_raw = [(sid, Public) | sid <- external_exe_dep_sids]
 
               -- Combine library and build-tool dependencies, for backwards
               -- compatibility (See issue #5412 and the documentation for
@@ -2564,8 +2564,8 @@ matchElabPkg p elab =
 -- and 'ComponentName' to the 'ComponentId' that should be used
 -- in this case.
 mkCCMapping
-  :: (ElaboratedPlanPackage, Maybe PrivateAlias)
-  -> ((PackageName, Maybe PrivateAlias), Map ComponentName ((AnnotatedId ComponentId)))
+  :: (ElaboratedPlanPackage, IsPrivate)
+  -> ((PackageName, IsPrivate), Map ComponentName ((AnnotatedId ComponentId)))
 mkCCMapping (ep, alias) = foldpp ep
   where
     foldpp =
@@ -4055,7 +4055,7 @@ setupHsConfigureFlags
       configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported pkgConfigCompiler
       configIgnoreBuildTools = mempty
 
-      cidToGivenComponent :: Maybe PrivateAlias -> ConfiguredId -> GivenComponent
+      cidToGivenComponent :: IsPrivate -> ConfiguredId -> GivenComponent
       cidToGivenComponent alias (ConfiguredId srcid mb_cn cid) = GivenComponent (packageName srcid) ln cid alias
         where
           ln = case mb_cn of
