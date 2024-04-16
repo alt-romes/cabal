@@ -55,13 +55,13 @@ common base-dep
     build-depends: base >=4.10 && <4.20
 
 common cabal-dep
-    build-depends: Cabal ^>=3.11
+    build-depends: Cabal ^>=3.13
 
 common cabal-syntax-dep
-    build-depends: Cabal-syntax ^>=3.11
+    build-depends: Cabal-syntax ^>=3.13
 
 common cabal-install-solver-dep
-    build-depends: cabal-install-solver ^>=3.11
+    build-depends: cabal-install-solver ^>=3.13
 
 library
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
