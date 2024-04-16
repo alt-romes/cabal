@@ -1,0 +1,14 @@
+packages:
+  custom-build-tool,
+  package-with-hooks,
+  ../../../Cabal-syntax,
+  ../../../Cabal,
+  ../../../Cabal-hooks,
+  ../../../hooks-exe,
+  ../../../../process
+
+--source-repository-package
+--  type: git
+--  location: https://github.com/sheaf/process
+--  tag: 161bd84f8cc9367011465eb0ec420e74e01e9d74
+--  post-checkout-command: autoreconf -i

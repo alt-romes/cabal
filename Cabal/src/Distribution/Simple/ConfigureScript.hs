@@ -53,7 +53,8 @@ runConfigureScript
   :: ConfigFlags
   -> FlagAssignment
   -> ProgramDb
-  -> Platform -- ^ host platform
+  -> Platform
+  -- ^ host platform
   -> IO ()
 runConfigureScript cfg flags programDb hp = do
   let commonCfg = configCommonFlags cfg

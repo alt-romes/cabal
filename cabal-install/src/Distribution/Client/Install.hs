@@ -117,7 +117,8 @@ import Distribution.Client.Setup
   , filterTestFlags
   )
 import Distribution.Client.SetupWrapper
-  ( SetupScriptOptions (..)
+  ( SetupRunnerArgs (NotInLibrary)
+  , SetupScriptOptions (..)
   , defaultSetupScriptOptions
   , setupWrapper
   )
@@ -2088,6 +2089,7 @@ installUnpackedPackage
                 getCommonFlags
                 flags
                 (const [])
+                NotInLibrary
           )
 
 -- helper

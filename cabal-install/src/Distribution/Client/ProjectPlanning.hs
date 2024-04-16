@@ -1654,9 +1654,13 @@ elaborateInstallPlan
                 case bt of
                   PD.Configure -> [CuzBuildType CuzConfigureBuildType]
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
-                  PD.Hooks -> [CuzBuildType CuzHooksBuildType]
                   PD.Make -> [CuzBuildType CuzMakeBuildType]
                   PD.Simple -> []
+                  -- SetupHooks TODO: we should be able to remove the following
+                  -- once we make Setup a proper separate component, instead of
+                  -- having to fetch it from the whole package.
+                  PD.Hooks -> [CuzBuildType CuzHooksBuildType]
+
               -- cabal-format versions prior to 1.8 have different build-depends semantics
               -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
               -- see, https://github.com/haskell/cabal/issues/4121
@@ -3833,9 +3837,9 @@ setupHsConfigureFlags
         , configDynExe
         , configFullyStaticExe
         , configGHCiLib
-        , -- , configProfExe -- overridden
+        , -- configProfExe -- overridden
         configProfLib
-        , -- , configProf -- overridden
+        , -- configProf -- overridden
         configProfDetail
         , configProfLibDetail
         , configCoverage
@@ -3895,8 +3899,8 @@ setupHsConfigureFlags
       configExtraLibDirsStatic = fmap makeSymbolicPath $ elabExtraLibDirsStatic
       configExtraFrameworkDirs = fmap makeSymbolicPath $ elabExtraFrameworkDirs
       configExtraIncludeDirs = fmap makeSymbolicPath $ elabExtraIncludeDirs
-      configProgPrefix = maybe mempty toFlag elabProgPrefix
-      configProgSuffix = maybe mempty toFlag elabProgSuffix
+      configProgPrefix = maybe (Flag (Cabal.toPathTemplate "")) toFlag elabProgPrefix
+      configProgSuffix = maybe (Flag (Cabal.toPathTemplate "")) toFlag elabProgSuffix
 
       configInstallDirs =
         fmap
@@ -3943,7 +3947,7 @@ setupHsConfigureFlags
       configExactConfiguration = toFlag True
       configFlagError = mempty -- TODO: [research required] appears not to be implemented
       configScratchDir = mempty -- never use
-      configUserInstall = mempty -- don't rely on defaults
+      configUserInstall = toFlag False -- SetupHooks TODO mempty -- don't rely on defaults
       configPrograms_ = mempty -- never use, shouldn't exist
       configUseResponseFiles = mempty
       configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported pkgConfigCompiler
@@ -4020,11 +4024,11 @@ setupHsTestFlags
 setupHsTestFlags (ElaboratedConfiguredPackage{..}) common =
   Cabal.TestFlags
     { testCommonFlags = common
-    , testMachineLog = maybe mempty toFlag elabTestMachineLog
-    , testHumanLog = maybe mempty toFlag elabTestHumanLog
+    , testMachineLog = maybeToFlag elabTestMachineLog
+    , testHumanLog = maybeToFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
     , testKeepTix = toFlag elabTestKeepTix
-    , testWrapper = maybe mempty toFlag elabTestWrapper
+    , testWrapper = maybeToFlag elabTestWrapper
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
     , testOptions = elabTestTestOptions
     }
@@ -4121,23 +4125,23 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) (ElaboratedSharedConfig{..
     , haddockProgramArgs = mempty -- unused, set at configure time
     , haddockHoogle = toFlag elabHaddockHoogle
     , haddockHtml = toFlag elabHaddockHtml
-    , haddockHtmlLocation = maybe mempty toFlag elabHaddockHtmlLocation
+    , haddockHtmlLocation = maybeToFlag elabHaddockHtmlLocation
     , haddockForHackage = toFlag elabHaddockForHackage
     , haddockForeignLibs = toFlag elabHaddockForeignLibs
     , haddockExecutables = toFlag elabHaddockExecutables
     , haddockTestSuites = toFlag elabHaddockTestSuites
     , haddockBenchmarks = toFlag elabHaddockBenchmarks
     , haddockInternal = toFlag elabHaddockInternal
-    , haddockCss = maybe mempty toFlag elabHaddockCss
+    , haddockCss = maybeToFlag elabHaddockCss
     , haddockLinkedSource = toFlag elabHaddockLinkedSource
     , haddockQuickJump = toFlag elabHaddockQuickJump
-    , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
-    , haddockContents = maybe mempty toFlag elabHaddockContents
+    , haddockHscolourCss = maybeToFlag elabHaddockHscolourCss
+    , haddockContents = maybeToFlag elabHaddockContents
     , haddockKeepTempFiles = mempty -- TODO: from build settings
-    , haddockIndex = maybe mempty toFlag elabHaddockIndex
-    , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
-    , haddockLib = maybe mempty toFlag elabHaddockLib
-    , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
+    , haddockIndex = maybeToFlag elabHaddockIndex
+    , haddockBaseUrl = maybeToFlag elabHaddockBaseUrl
+    , haddockLib = maybeToFlag elabHaddockLib
+    , haddockOutputDir = maybeToFlag elabHaddockOutputDir
     }
 
 setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
