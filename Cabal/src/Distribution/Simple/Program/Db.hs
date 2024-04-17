@@ -67,6 +67,9 @@ module Distribution.Simple.Program.Db
   , ConfiguredProgs
   , updateUnconfiguredProgs
   , updateConfiguredProgs
+
+    -- SetupHooks TODO: hack
+  , updatePathProgDb
   ) where
 
 import Distribution.Compat.Prelude
@@ -465,6 +468,24 @@ reconfigurePrograms verbosity paths argss progdb = do
     $ progdb
   where
     progs = catMaybes [lookupKnownProgram name progdb | (name, _) <- paths]
+
+-- SetupHooks TODO: hack
+updatePathProgDb :: Verbosity -> [(String, Maybe String)] -> ProgramDb -> IO ProgramDb
+updatePathProgDb verbosity envOverrides progdb =
+  updatePathProgs verbosity envOverrides progs progdb
+  where
+    progs = Map.elems $ configuredProgs progdb
+
+updatePathProgs :: Verbosity -> [(String, Maybe String)] -> [ConfiguredProgram] -> ProgramDb -> IO ProgramDb
+updatePathProgs verbosity envOverrides progs progdb =
+  foldM (flip (updatePathProg verbosity envOverrides)) progdb progs
+
+updatePathProg :: Verbosity -> [(String, Maybe String)] ->  ConfiguredProgram -> ProgramDb -> IO ProgramDb
+updatePathProg _verbosity envOverrides prog progdb = do
+  newPath <- programSearchPathAsPATHVar (progSearchPath progdb)
+  let prog' = prog { programOverrideEnv = [("PATH", Just newPath)] ++ envOverrides }
+    -- SetupHooks TODO: don't just replace the old but augment it?
+  return $ updateProgram prog' progdb
 
 -- | Check that a program is configured and available to be run.
 --

@@ -83,7 +83,7 @@ import Distribution.Simple.Compiler
   , compilerFlavor
   )
 import Distribution.Simple.Configure
-  ( configCompilerEx
+  ( configCompilerEx, localBuildInfoFile, getPersistBuildConfig, writePersistBuildConfig
   )
 import Distribution.Simple.PackageDescription
   ( readGenericPackageDescription
@@ -99,10 +99,10 @@ import Distribution.Simple.Program
   , getProgramSearchPath
   , ghcProgram
   , ghcjsProgram
-  , runDbProgramCwd
+  , runDbProgramCwd, programOverrideEnv, updateProgram
   )
 import Distribution.Simple.Program.Db
-  ( prependProgramSearchPath
+  ( prependProgramSearchPath, lookupProgramByName, updatePathProgDb
   )
 import Distribution.Simple.Program.Find
   ( programSearchPathAsPATHVar
@@ -193,6 +193,7 @@ import Distribution.Utils.NubList
   ( toNubListR
   )
 import Distribution.Types.LocalBuildInfo ( LocalBuildInfo )
+import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Verbosity
 import Distribution.Client.Errors
 import qualified Distribution.Client.InLibrary as InLibrary
@@ -204,7 +205,7 @@ import Distribution.Client.SetupHooks.CallHooksExe
 
 import Data.List (foldl1')
 import Data.Kind ( Type, Constraint )
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, removeFile)
 import System.FilePath ((<.>), (</>), takeFileName)
 import System.IO (Handle, hPutStr)
 import System.Process (StdStream (..))
@@ -634,6 +635,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
         NotInLibrary -> Don'tAllowInLibrary
         InLibraryArgs {} -> AllowInLibrary
   ASetup (setup :: Setup kind) <- getSetup verbosity options mpkg allowInLibrary
+  ASetup (setup' :: Setup kind') <- getSetup verbosity options mpkg Don'tAllowInLibrary
   let version = setupVersion setup
       flags = getFlags version
       extraArgs = getExtraArgs version
@@ -666,7 +668,48 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                 InLibrary.configure
                   (InLibrary.libraryConfigureInputsFromElabPackage progDb' elabSharedConfig elabReadyPkg)
                   flags
-              return $ InLibraryLBI lbi
+              let mbWorkDir = useWorkingDir options
+                  distPref = useDistPref options
+{-
+                  lbiPath = interpretSymbolicPath mbWorkDir $ localBuildInfoFile distPref
+              removeFile lbiPath
+              let
+                notInLibraryMethod' :: kind' ~ GeneralSetup => IO ()
+                notInLibraryMethod' = runSetupCommand verbosity setup' cmd getCommonFlags flags extraArgs NotInLibrary
+                runSetup' :: IO ()
+                runSetup' =
+                  case setupMethod setup' of
+                    InternalMethod -> notInLibraryMethod'
+                    ExternalMethod {} -> notInLibraryMethod'
+                    SelfExecMethod -> notInLibraryMethod'
+                    LibraryMethod -> error "internal error: NotInLibrary argument but getSetup chose InLibrary"
+              runSetup'
+              --setupLBI <- getPersistBuildConfig mbWorkDir distPref
+              --when True $ do
+              --  putStrLn "SetupWrapper: InLibrary LBI comparison"
+              --  putStrLn $ unlines
+              --    [ "extraPathEnv: " ++ show (useExtraPathEnv options)
+              --    , "extraEnvOverrides: " ++ show (useExtraEnvOverrides options) ]
+              --  putStrLn $ replicate 80 '='
+              --  putStrLn "In-library GHC"
+              --  putStrLn $ show $ lookupProgramByName "ghc" $ LBI.withPrograms lbi
+              --  putStrLn $ replicate 80 '-'
+              --  putStrLn "Setup GHC"
+              --  putStrLn $ show $ lookupProgramByName "ghc" $ LBI.withPrograms setupLBI
+              --  putStrLn $ replicate 80 '='
+-}
+
+              let progs0 = LBI.withPrograms lbi
+              progs1 <- updatePathProgDb verbosity (useExtraEnvOverrides options) progs0
+              let
+                  lbi' =
+                    lbi
+                      { LBI.withPrograms = progs1
+                      }
+              -- (When we're comparing in-library and Setup, make sure that
+              -- the final LBI is the one from in-library.)
+              writePersistBuildConfig mbWorkDir distPref lbi'
+              return $ InLibraryLBI lbi'
             InLibraryPostConfigureArgs sPhase mbLBI ->
               case mbLBI of
                 NotInLibraryNoLBI ->
@@ -676,6 +719,8 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                   -- LocalBuildInfo (see "whenReconfigure"
                   --   in Distribution.Client.ProjectBuilding.UnpackedPackage).
                 InLibraryLBI lbi ->
+                  --withExtraPathEnv (useExtraPathEnv options) $
+                  --  withEnvOverrides (useExtraEnvOverrides options) $
                   case sPhase of
                     SBuildPhase    -> InLibrary.build    flags lbi
                     SHaddockPhase  -> InLibrary.haddock  flags lbi

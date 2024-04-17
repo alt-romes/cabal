@@ -22,11 +22,15 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
   , buildDir
   , depLibraryPaths
   )
+import Distribution.Simple.Program
+import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Run
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Test
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
-import Distribution.System
+import Distribution.System ( Platform(Platform) )
 import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
   ( LocalBuildInfo (..)
@@ -86,6 +90,16 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   notice verbosity $ summarizeSuiteStart $ testName'
 
   -- Run the test executable
+  newPath <- programSearchPathAsPATHVar (progSearchPath $ LBI.withPrograms lbi)
+
+  -- SetupHooks TODO: giant hack to propagate the data directories of
+  -- any build-tool-depends executables: these overrides are not stored in
+  -- the program database, but "ghc" has the right overrides, so use those.
+  -- This is just temporary before we rework ProgramDb a bit.
+  let otherStuff = case lookupProgramByName "ghc" (LBI.withPrograms lbi) of
+        Just (ConfiguredProgram { programOverrideEnv = overrides }) -> overrides
+        Nothing -> []
+  blah <- fromMaybe [] <$> getEffectiveEnvironment otherStuff
   let opts =
         map
           (testOption pkg_descr lbi suite)
@@ -100,7 +114,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       pkgPathEnv =
         (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
           : existingEnv
-      shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ pkgPathEnv
+      shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ blah ++ [("PATH", newPath)] ++ pkgPathEnv
 
   -- Add (DY)LD_LIBRARY_PATH if needed
   shellEnv' <-
