@@ -227,10 +227,8 @@ hpcProgram =
 haskellSuiteProgram :: Program
 haskellSuiteProgram =
   (simpleProgram "haskell-suite")
-    { -- pretend that the program exists, otherwise it won't be in the
-      -- "configured" state
-      programFindLocation = \_verbosity _searchPath ->
-        return $ Just ("haskell-suite-dummy-location", [])
+    { programFindLocation = \_verbosity _searchPath ->
+        return Nothing
     }
 
 -- This represent a haskell-suite package manager. See the comments for
@@ -239,7 +237,7 @@ haskellSuitePkgProgram :: Program
 haskellSuitePkgProgram =
   (simpleProgram "haskell-suite-pkg")
     { programFindLocation = \_verbosity _searchPath ->
-        return $ Just ("haskell-suite-pkg-dummy-location", [])
+        return Nothing
     }
 
 happyProgram :: Program
