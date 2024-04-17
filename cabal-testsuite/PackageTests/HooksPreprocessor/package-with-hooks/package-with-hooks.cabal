@@ -5,32 +5,45 @@ license:            BSD-3-Clause
 author:             sheaf
 maintainer:         sheaf
 category:           Testing
-build-type:         Simple
-  --Hooks
+build-type:         Hooks
+
+data-dir:
+  data
+data-files:
+  CustomPP2Data.txt
 
 common warnings
   ghc-options: -Wall
 
---custom-setup
---  import: warnings
---  setup-depends:
---    base >= 4.18 && < 5,
---    containers,
---    directory,
---    filepath,
---    Cabal,
---    Cabal-hooks,
---    hooks-exe
+custom-setup
+  import: warnings
+  setup-depends:
+    base >= 4.18 && < 5,
+    containers,
+    filepath,
+    Cabal,
+    Cabal-hooks,
+    hooks-exe
 
---library
---  import:           warnings
---  exposed-modules:  MyLib
---  autogen-modules:  MyLib
---  build-depends:    base >= 4.18 && < 5
---  hs-source-dirs:   src
---  default-language: Haskell2010
---  build-tool-depends:
---    custom-build-tool:custom-build-tool
+executable custom-pp2
+  import:           warnings
+  hs-source-dirs:   exe
+  main-is:          Main.hs
+  build-depends:    base ^>= 4.18 && < 5, custom-build-tool
+  autogen-modules:  Paths_package_with_hooks
+  other-modules:    Paths_package_with_hooks
+  default-language: Haskell2010
+
+library
+  import:           warnings
+  exposed-modules:  MyLib1, MyLib2
+  autogen-modules:  MyLib1, MyLib2
+  build-depends:    base >= 4.18 && < 5
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  build-tool-depends:
+    custom-build-tool:custom-pp1,
+    package-with-hooks:custom-pp2
 
 test-suite package-with-hooks-test
   import:           warnings
@@ -46,4 +59,5 @@ test-suite package-with-hooks-test
       >= 2.20 && < 3,
     process
   build-tool-depends:
-    custom-build-tool:custom-build-tool
+    custom-build-tool:custom-pp1,
+    package-with-hooks:custom-pp2

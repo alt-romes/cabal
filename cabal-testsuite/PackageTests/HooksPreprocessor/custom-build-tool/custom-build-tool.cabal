@@ -10,12 +10,29 @@ build-type:         Simple
 data-dir:
   custom-build-tool-data
 data-files:
-  CustomBuildToolData.txt
+  CustomPP1Data.txt
 
 common warnings
   ghc-options: -Wall
 
-executable custom-build-tool
+library
+
+  import:
+    warnings
+
+  hs-source-dirs:
+    src
+
+  exposed-modules:
+    CustomBuildTool
+
+  build-depends:
+    base ^>= 4.18 && < 5,
+    containers,
+    directory
+
+executable custom-pp1
+
   import:
     warnings
 
@@ -27,8 +44,7 @@ executable custom-build-tool
 
   build-depends:
     base ^>= 4.18 && < 5,
-    containers,
-    directory
+    custom-build-tool
 
   autogen-modules:
     Paths_custom_build_tool

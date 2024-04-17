@@ -12,8 +12,8 @@ import System.Process
 
 --------------------------------------------------------------------------------
 
-callCustomPp :: IO ()
-callCustomPp = do
+callCustomPp :: String -> IO ()
+callCustomPp customPpName = do
   (exitCode, stdout, stderr) <- readProcessWithExitCode customPpName [] ""
   case exitCode of
     ExitSuccess ->
@@ -24,5 +24,3 @@ callCustomPp = do
         , "stdout: " ++ stdout
         , "stderr: " ++ stderr ]
 
-customPpName :: String
-customPpName = "custom-build-tool"

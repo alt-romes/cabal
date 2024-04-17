@@ -16,9 +16,13 @@ import CallCustomPp
 -- data directory, both at compile-time and at run-time.
 
 $( do
-    runIO callCustomPp
+    runIO $ do
+      callCustomPp "custom-pp1"
+      callCustomPp "custom-pp2"
     return []
   )
 
 main :: IO ()
-main = callCustomPp
+main = do
+  callCustomPp "custom-pp1"
+  callCustomPp "custom-pp2"

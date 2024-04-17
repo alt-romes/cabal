@@ -25,42 +25,28 @@ import Distribution.Simple.SetupHooks
 -- Cabal
 import Distribution.ModuleName
   ( ModuleName )
-import Distribution.Simple.Flag
-  ( fromFlag )
 import Distribution.Simple.LocalBuildInfo
   ( mbWorkDirLBI )
 import Distribution.Simple.Program
-  ( configureProgram, runProgramCwd )
+  ( runProgramCwd )
 import Distribution.Simple.Program.Db
   ( lookupProgram )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose, findFileCwdWithExtension' )
 import Distribution.Types.Component
   ( componentBuildInfo )
-import qualified Distribution.Types.LocalBuildConfig as LBC
-  ( withPrograms )
 import Distribution.Types.LocalBuildInfo
   ( withPrograms )
-import Distribution.Types.VersionRange
-  ( anyVersion )
 import Distribution.Utils.Path
   ( SymbolicPath, FileOrDir(Dir), CWD, Pkg
-  , interpretSymbolicPath, getSymbolicPath, moduleNameSymbolicPath
+  , getSymbolicPath, moduleNameSymbolicPath
   )
 import Distribution.Utils.ShortText
   ( toShortText )
 
--- containers
-import qualified Data.Map as Map
-  ( singleton )
-
--- directory
-import System.Directory
-  ( getCurrentDirectory )
-
 -- filepath
 import System.FilePath
-  ( (</>), replaceExtension, takeDirectory )
+  ( (</>), replaceExtension, takeDirectory, takeExtension )
 
 --------------------------------------------------------------------------------
 
@@ -73,9 +59,6 @@ setupHooks =
             Just $ rules (static ()) preBuildRules
         }
     }
-
-customPpName :: String
-customPpName = "custom-build-tool"
 
 -- | Runs the custom-build-tool preprocessor on all .hs-custompp files.
 preBuildRules :: PreBuildComponentInputs -> RulesM ()
@@ -94,24 +77,33 @@ preBuildRules
           progDb = withPrograms lbi
           mbWorkDir = mbWorkDirLBI lbi
 
-    -- 1. Look up the custom-build-tool preprocessor.
-      let customPpProg = simpleProgram customPpName
-          mbCustomPp = lookupProgram customPpProg progDb
-          customPp = case mbCustomPp of
+    -- 1. Look up the custom-build-tool preprocessors.
+      let customPp1Prog = simpleProgram "custom-pp1"
+          mbCustomPp1 = lookupProgram customPp1Prog progDb
+          customPp1 = case mbCustomPp1 of
             Just pp -> pp
             Nothing ->
               error $
                 unlines
-                  [ "package-with-hooks: could not find " ++ show customPpName ++ " pre-processor in the program database."
+                  [ "package-with-hooks: could not find custom-pp1 pre-processor in the program database."
+                  , "Component: " ++ show compNm ]
+          customPp2Prog = simpleProgram "custom-pp2"
+          mbCustomPp2 = lookupProgram customPp2Prog progDb
+          customPp2 = case mbCustomPp2 of
+            Just pp -> pp
+            Nothing ->
+              error $
+                unlines
+                  [ "package-with-hooks: could not find custom-pp2 pre-processor in the program database."
                   , "Component: " ++ show compNm ]
 
-    -- 2. Create a command to run this preprocess, passing input and output file locations.
+    -- 2. Create a command to run a preprocessor, passing input and output file locations.
       let
-        ppCmd :: Location -> Location
+        ppCmd :: ConfiguredProgram -> Location -> Location
               -> Command ( Verbosity, Maybe (SymbolicPath CWD (Dir Pkg)), ConfiguredProgram, Location, Location ) ( IO () )
-        ppCmd i o =
+        ppCmd pp i o =
           mkCommand ( static Dict ) ( static ppModule )
-            ( verbosity, mbWorkDir, customPp,  i, o )
+            ( verbosity, mbWorkDir, pp, i, o )
 
     -- 3. Get all modules listed in the package description for this component.
       let mods = componentModules comp
@@ -122,7 +114,7 @@ preBuildRules
       ppMbMods <-
         liftIO $
           for mods $ \ md -> do
-            mbPath <- findFileCwdWithExtension' mbWorkDir [ "hs-custompp" ] searchDirs
+            mbPath <- findFileCwdWithExtension' mbWorkDir [ "hs-custompp1", "hs-custompp2" ] searchDirs
                         ( moduleNameSymbolicPath md )
             case mbPath of
               Just ( base, rel ) ->
@@ -134,16 +126,21 @@ preBuildRules
       let ppMods = catMaybes ppMbMods
       liftIO $ putStrLn $ unlines $
         "package-with-hooks: hs-custompp modules:"
-        : ( map ( \ m -> "  - " ++ show m ) mods )
+        : ( map ( \ m -> "  - " ++ show m ) ppMods )
     -- TODO: declare the corresponding monitored files corresponding to the
     -- above search (it would be nice to be able to use findFileWithExtensionMonitored).
 
     -- 5. Declare a rule for each custom-pp module that runs the pre-processor.
       for_ ppMods $ \ ( md, inputLoc@( _inputBaseDir, inputRelPath ) ) -> do
-        let outputBaseLoc = getSymbolicPath $ autogenComponentModulesDir lbi clbi
+        let ext = takeExtension inputRelPath
+            customPp = case ext of
+              ".hs-custompp1" -> customPp1
+              ".hs-custompp2" -> customPp2
+              _ -> error $ "internal error: unhandled extension " ++ ext
+            outputBaseLoc = getSymbolicPath $ autogenComponentModulesDir lbi clbi
             outputLoc = ( outputBaseLoc, replaceExtension inputRelPath "hs" )
         registerRule_ ( toShortText $ show md ) $
-          staticRule ( ppCmd inputLoc outputLoc ) [] ( NE.singleton outputLoc )
+          staticRule ( ppCmd customPp inputLoc outputLoc ) [] ( NE.singleton outputLoc )
 
 ppModule :: ( Verbosity, Maybe (SymbolicPath CWD (Dir Pkg)), ConfiguredProgram, Location, Location ) -> IO ()
 ppModule ( verbosity, mbWorkDir, customPp, ( inputBaseDir, inputRelPath ), ( outputBaseDir, outputRelPath ) ) = do
