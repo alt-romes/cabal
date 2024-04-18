@@ -8,7 +8,12 @@ build-type:      Hooks
 extra-doc-files: CHANGELOG.md
 
 custom-setup
-    setup-depends: base, Cabal, Cabal-syntax, Cabal-hooks, hooks-exe
+    setup-depends: base, Cabal, Cabal-syntax, Cabal-hooks
+    -- Note that we do not include hooks-exe in this cabal package.
+    -- When using build-type: Hooks, an implicit setup dependency should be
+    -- introduced in hooks-exe in order to construct the Setup.hs executable
+    -- from the hooks.
+    -- This softly doubles as a test for that.
 
 library
     exposed-modules:  MyLib
