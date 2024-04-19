@@ -102,6 +102,7 @@ import Distribution.Simple.Errors
 data ProgramDb = ProgramDb
   { unconfiguredProgs :: UnconfiguredProgs
   , progSearchPath :: ProgramSearchPath
+  , progOverrideEnv :: [(String, Maybe String)]
   , configuredProgs :: ConfiguredProgs
   }
   deriving (Typeable)
@@ -111,7 +112,7 @@ type UnconfiguredProgs = Map.Map String UnconfiguredProgram
 type ConfiguredProgs = Map.Map String ConfiguredProgram
 
 emptyProgramDb :: ProgramDb
-emptyProgramDb = ProgramDb Map.empty defaultProgramSearchPath Map.empty
+emptyProgramDb = ProgramDb Map.empty defaultProgramSearchPath [] Map.empty
 
 defaultProgramDb :: ProgramDb
 defaultProgramDb = restoreProgramDb builtinPrograms emptyProgramDb
@@ -151,14 +152,17 @@ instance Read ProgramDb where
 instance Binary ProgramDb where
   put db = do
     put (progSearchPath db)
+    put (progOverrideEnv db)
     put (configuredProgs db)
 
   get = do
     searchpath <- get
+    overrides <- get
     progs <- get
     return $!
       emptyProgramDb
         { progSearchPath = searchpath
+        , progOverrideEnv = overrides
         , configuredProgs = progs
         }
 
@@ -169,6 +173,7 @@ instance Structured ProgramDb where
       0
       "ProgramDb"
       [ structure (Proxy :: Proxy ProgramSearchPath)
+      , structure (Proxy :: Proxy [(String, Maybe String)])
       , structure (Proxy :: Proxy ConfiguredProgs)
       ]
 
@@ -235,14 +240,15 @@ modifyProgramSearchPath f db =
 prependProgramSearchPath
   :: Verbosity
   -> [FilePath]
+  -> [(String, Maybe FilePath)]
   -> ProgramDb
   -> IO ProgramDb
-prependProgramSearchPath verbosity extraPaths db =
-  if not $ null extraPaths
-    then do
-      logExtraProgramSearchPath verbosity extraPaths
-      pure $ modifyProgramSearchPath (map ProgramSearchPathDir extraPaths ++) db
-    else pure db
+prependProgramSearchPath verbosity extraPaths extraEnv db = do
+  unless (null extraPaths) $
+    logExtraProgramSearchPath verbosity extraPaths
+  let db' = modifyProgramSearchPath (map ProgramSearchPathDir extraPaths ++) db
+      db'' = db'{progOverrideEnv = progOverrideEnv db' ++ extraEnv}
+  return db''
 
 -- | User-specify this path.  Basically override any path information
 --  for this program in the configuration. If it's not a known
@@ -410,7 +416,7 @@ configureUnconfiguredProgram verbosity prog progdb = do
               , programVersion = version
               , programDefaultArgs = []
               , programOverrideArgs = userSpecifiedArgs prog progdb
-              , programOverrideEnv = [("PATH", Just newPath)]
+              , programOverrideEnv = [("PATH", Just newPath)] ++ progOverrideEnv progdb
               , programProperties = Map.empty
               , programLocation = location
               , programMonitorFiles = triedLocations

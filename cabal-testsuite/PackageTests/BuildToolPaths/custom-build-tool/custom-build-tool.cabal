@@ -1,0 +1,55 @@
+cabal-version:      3.0
+name:               custom-build-tool
+version:            0.1.0.0
+license:            BSD-3-Clause
+author:             sheaf
+maintainer:         sheaf
+category:           Testing
+build-type:         Simple
+
+data-dir:
+  custom-build-tool-data
+data-files:
+  CustomPP1Data.txt
+
+common warnings
+  ghc-options: -Wall
+
+library
+
+  import:
+    warnings
+
+  hs-source-dirs:
+    src
+
+  exposed-modules:
+    CustomBuildTool
+
+  build-depends:
+    base,
+    containers,
+    directory
+
+executable custom-pp1
+
+  import:
+    warnings
+
+  hs-source-dirs:
+    exe
+
+  main-is:
+    Main.hs
+
+  build-depends:
+    base,
+    custom-build-tool
+
+  autogen-modules:
+    Paths_custom_build_tool
+  other-modules:
+    Paths_custom_build_tool
+
+  default-language:
+    Haskell2010

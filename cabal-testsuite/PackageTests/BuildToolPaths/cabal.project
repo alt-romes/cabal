@@ -1,0 +1,3 @@
+packages:
+  custom-build-tool,
+  package-with-build-tools

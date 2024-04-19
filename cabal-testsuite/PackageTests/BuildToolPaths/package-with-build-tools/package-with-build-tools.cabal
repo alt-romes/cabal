@@ -1,0 +1,88 @@
+cabal-version:      3.14
+name:               package-with-build-tools
+version:            0.1.0.0
+license:            BSD-3-Clause
+author:             sheaf
+maintainer:         sheaf
+category:           Testing
+build-type:         Hooks
+
+data-dir:
+  data
+data-files:
+  CustomPP2Data.txt
+
+common warnings
+  ghc-options: -Wall
+
+custom-setup
+  setup-depends:
+    base,
+    containers,
+    filepath,
+    Cabal,
+    Cabal-hooks
+
+executable custom-pp2
+  import:           warnings
+  hs-source-dirs:   tool
+  main-is:          Main.hs
+  build-depends:    base, custom-build-tool
+  autogen-modules:  Paths_package_with_hooks
+  other-modules:    Paths_package_with_hooks
+  default-language: Haskell2010
+
+library
+  import:           warnings
+  exposed-modules:  MyLib1, MyLib2
+  autogen-modules:  MyLib1, MyLib2
+  build-depends:    base
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  build-tool-depends:
+    custom-build-tool:custom-pp1,
+    package-with-build-tools:custom-pp2
+
+executable package-with-build-tools-exe
+  import:           warnings
+  default-language: Haskell2010
+  hs-source-dirs:   exe, src
+  other-modules:    CallCustomPp
+  main-is:          Main.hs
+  build-depends:
+    base,
+    template-haskell,
+    process
+  build-tool-depends:
+    custom-build-tool:custom-pp1,
+    package-with-build-tools:custom-pp2
+
+test-suite package-with-build-tools-test
+  import:           warnings
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test, src
+  other-modules:    CallCustomPp
+  main-is:          Main.hs
+  build-depends:
+    base,
+    template-haskell,
+    process
+  build-tool-depends:
+    custom-build-tool:custom-pp1,
+    package-with-build-tools:custom-pp2
+
+benchmark package-with-build-tools-bench
+  import:           warnings
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   bench, src
+  other-modules:    CallCustomPp
+  main-is:          Main.hs
+  build-depends:
+    base,
+    template-haskell,
+    process
+  build-tool-depends:
+    custom-build-tool:custom-pp1,
+    package-with-build-tools:custom-pp2
