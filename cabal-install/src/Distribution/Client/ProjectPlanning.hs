@@ -1666,13 +1666,17 @@ elaborateInstallPlan
               -- Custom would require us to create a new 'ElabSetup'
               -- type, and teach all of the code paths how to handle it.
               -- Once you've implemented this, swap it for the code below.
+              -- (See #9986 for more information about this task.)
               cuz_buildtype =
                 case bt of
-                  PD.Configure -> [CuzBuildType CuzConfigureBuildType]
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
-                  PD.Hooks -> [CuzBuildType CuzHooksBuildType]
                   PD.Make -> [CuzBuildType CuzMakeBuildType]
                   PD.Simple -> []
+                  -- TODO: remove the following, once we make Setup a separate
+                  -- component (task tracked at #9986).
+                  PD.Hooks -> [CuzBuildType CuzHooksBuildType]
+                  PD.Configure -> [CuzBuildType CuzConfigureBuildType]
+
               -- cabal-format versions prior to 1.8 have different build-depends semantics
               -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
               -- see, https://github.com/haskell/cabal/issues/4121
@@ -2140,6 +2144,7 @@ elaborateInstallPlan
               gdesc of
               Right (desc, _) -> desc
               Left _ -> error "Failed to finalizePD in elaborateSolverToCommon"
+            elabGPkgDescription = gdesc
             elabFlagAssignment = flags
             elabFlagDefaults =
               PD.mkFlagAssignment
@@ -3771,11 +3776,10 @@ setupHsScriptOptions
   -> DistDirLayout
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
-  -> Bool
   -> Lock
   -> SetupScriptOptions
 -- TODO: Fix this so custom is a separate component.  Custom can ALWAYS
--- be a separate component!!!
+-- be a separate component!!! See #9986.
 setupHsScriptOptions
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   plan
@@ -3783,7 +3787,6 @@ setupHsScriptOptions
   distdir
   srcdir
   builddir
-  isParallelBuild
   cacheLock =
     SetupScriptOptions
       { useCabalVersion = thisVersion elabSetupScriptCliVersion
@@ -3816,7 +3819,6 @@ setupHsScriptOptions
         -- for build-tools-depends.
         useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
       , useWin32CleanHack = False -- TODO: [required eventually]
-      , forceExternalSetupMethod = isParallelBuild
       , setupCacheLock = Just cacheLock
       , isInteractive = False
       }
@@ -3945,10 +3947,10 @@ setupHsConfigureFlags
         , configDynExe
         , configFullyStaticExe
         , configGHCiLib
-        , -- , configProfExe -- overridden
+        , -- configProfExe -- overridden
         configProfLib
         , configProfShared
-        , -- , configProf -- overridden
+        , -- configProf -- overridden
         configProfDetail
         , configProfLibDetail
         , configCoverage
@@ -4008,8 +4010,8 @@ setupHsConfigureFlags
       configExtraLibDirsStatic = fmap makeSymbolicPath $ elabExtraLibDirsStatic
       configExtraFrameworkDirs = fmap makeSymbolicPath $ elabExtraFrameworkDirs
       configExtraIncludeDirs = fmap makeSymbolicPath $ elabExtraIncludeDirs
-      configProgPrefix = maybe mempty toFlag elabProgPrefix
-      configProgSuffix = maybe mempty toFlag elabProgSuffix
+      configProgPrefix = maybe (Flag (Cabal.toPathTemplate "")) toFlag elabProgPrefix
+      configProgSuffix = maybe (Flag (Cabal.toPathTemplate "")) toFlag elabProgSuffix
 
       configInstallDirs =
         fmap
@@ -4139,11 +4141,11 @@ setupHsTestFlags
 setupHsTestFlags (ElaboratedConfiguredPackage{..}) common =
   Cabal.TestFlags
     { testCommonFlags = common
-    , testMachineLog = maybe mempty toFlag elabTestMachineLog
-    , testHumanLog = maybe mempty toFlag elabTestHumanLog
+    , testMachineLog = maybeToFlag elabTestMachineLog
+    , testHumanLog = maybeToFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
     , testKeepTix = toFlag elabTestKeepTix
-    , testWrapper = maybe mempty toFlag elabTestWrapper
+    , testWrapper = maybeToFlag elabTestWrapper
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
     , testOptions = elabTestTestOptions
     }
@@ -4245,23 +4247,23 @@ setupHsHaddockFlags
       , haddockProgramArgs = mempty -- unused, set at configure time
       , haddockHoogle = toFlag elabHaddockHoogle
       , haddockHtml = toFlag elabHaddockHtml
-      , haddockHtmlLocation = maybe mempty toFlag elabHaddockHtmlLocation
+      , haddockHtmlLocation = maybeToFlag elabHaddockHtmlLocation
       , haddockForHackage = toFlag elabHaddockForHackage
       , haddockForeignLibs = toFlag elabHaddockForeignLibs
       , haddockExecutables = toFlag elabHaddockExecutables
       , haddockTestSuites = toFlag elabHaddockTestSuites
       , haddockBenchmarks = toFlag elabHaddockBenchmarks
       , haddockInternal = toFlag elabHaddockInternal
-      , haddockCss = maybe mempty toFlag elabHaddockCss
+      , haddockCss = maybeToFlag elabHaddockCss
       , haddockLinkedSource = toFlag elabHaddockLinkedSource
       , haddockQuickJump = toFlag elabHaddockQuickJump
-      , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
-      , haddockContents = maybe mempty toFlag elabHaddockContents
+      , haddockHscolourCss = maybeToFlag elabHaddockHscolourCss
+      , haddockContents = maybeToFlag elabHaddockContents
       , haddockKeepTempFiles = toFlag keepTmpFiles
-      , haddockIndex = maybe mempty toFlag elabHaddockIndex
-      , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
-      , haddockResourcesDir = maybe mempty toFlag elabHaddockResourcesDir
-      , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
+      , haddockIndex = maybeToFlag elabHaddockIndex
+      , haddockBaseUrl = maybeToFlag elabHaddockBaseUrl
+      , haddockResourcesDir = maybeToFlag elabHaddockResourcesDir
+      , haddockOutputDir = maybeToFlag elabHaddockOutputDir
       , haddockUseUnicode = toFlag elabHaddockUseUnicode
       }
 
