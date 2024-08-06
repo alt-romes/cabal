@@ -467,7 +467,7 @@ vcsGit =
       where
         git args = (programInvocation prog args){progInvokeCwd = Just destdir}
         cloneArgs =
-          ["clone", srcuri, destdir]
+          ["clone", "--depth=1", srcuri, destdir]
             ++ branchArgs
             ++ verboseArg
         branchArgs = case srpBranch repo of
@@ -524,7 +524,7 @@ vcsGit =
               }
 
         cloneArgs =
-          ["clone", "--no-checkout", loc, localDir]
+          ["clone", "--depth=1", "--no-checkout", loc, localDir]
             ++ case peer of
               Nothing -> []
               Just peerLocalDir -> ["--reference", peerLocalDir]
