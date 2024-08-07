@@ -1351,21 +1351,23 @@ syncAndReadSourcePackagesRemoteRepos
        in configureVCS verbosity progPathExtra vcs
 
     concat
-      <$> sequenceA
-        [ rerunIfChanged verbosity monitor repoGroup' $ do
-          vcs' <- getConfiguredVCS repoType
-          syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
-        | repoGroup@((primaryRepo, repoType) : _) <- Map.elems reposByLocation
-        , let repoGroup' = map fst repoGroup
-              pathStem =
-                distDownloadSrcDirectory
-                  </> localFileNameForRemoteRepo primaryRepo
-              monitor
-                :: FileMonitor
-                    [SourceRepoList]
-                    [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
-              monitor = newFileMonitor (pathStem <.> "cache")
-        ]
+     <$> rerunConcurrentlyIfChanged verbosity
+          [ ( monitor
+            , repoGroup'
+            , do vcs' <- getConfiguredVCS repoType
+                 syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
+            )
+          | repoGroup@((primaryRepo, repoType) : _) <- Map.elems reposByLocation
+          , let repoGroup' = map fst repoGroup
+                pathStem =
+                  distDownloadSrcDirectory
+                    </> localFileNameForRemoteRepo primaryRepo
+                monitor
+                  :: FileMonitor
+                      [SourceRepoList]
+                      [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+                monitor = newFileMonitor (pathStem <.> "cache")
+          ]
     where
       syncRepoGroupAndReadSourcePackages
         :: VCS ConfiguredProgram
