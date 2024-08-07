@@ -1167,14 +1167,14 @@ fetchAndReadSourcePackages
   projectConfigBuildOnly
   pkgLocations = do
     pkgsLocalDirectory <-
-      sequenceA
+      concurrentRebuildActions
         [ readSourcePackageLocalDirectory verbosity dir cabalFile
         | location <- pkgLocations
         , (dir, cabalFile) <- projectPackageLocal location
         ]
 
     pkgsLocalTarball <-
-      sequenceA
+      concurrentRebuildActions
         [ readSourcePackageLocalTarball verbosity path
         | ProjectPackageLocalTarball path <- pkgLocations
         ]
@@ -1186,7 +1186,7 @@ fetchAndReadSourcePackages
             verbosity
             progPathExtra
             preferredHttpTransport
-      sequenceA
+      concurrentRebuildActions
         [ fetchAndReadSourcePackageRemoteTarball
           verbosity
           distDirLayout
