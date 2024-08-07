@@ -74,7 +74,7 @@ import Control.Concurrent.Async
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
 import Control.Monad
 import Control.Monad.Reader as Reader
-import Control.Monad.State as State
+import Control.Monad.Writer as Writer
 import qualified Data.Map.Strict as Map
 import System.Directory
 import System.FilePath
@@ -82,7 +82,7 @@ import System.FilePath
 -- | A monad layered on top of 'IO' to help with re-running actions when the
 -- input files and values they depend on change. The crucial operations are
 -- 'rerunIfChanged' and 'monitorFiles'.
-newtype Rebuild a = Rebuild (ReaderT FilePath (StateT [MonitorFilePath] IO) a)
+newtype Rebuild a = Rebuild (ReaderT FilePath (WriterT [MonitorFilePath] IO) a)
   deriving (Functor, Applicative, Monad, MonadIO)
 
 -- | Use this within the body action of 'rerunIfChanged' to declare that the
@@ -93,19 +93,19 @@ newtype Rebuild a = Rebuild (ReaderT FilePath (StateT [MonitorFilePath] IO) a)
 -- Relative paths are interpreted as relative to an implicit root, ultimately
 -- passed in to 'runRebuild'.
 monitorFiles :: [MonitorFilePath] -> Rebuild ()
-monitorFiles filespecs = Rebuild (State.modify (filespecs ++))
+monitorFiles filespecs = Rebuild (Writer.tell filespecs)
 
 -- | Run a 'Rebuild' IO action.
 unRebuild :: FilePath -> Rebuild a -> IO (a, [MonitorFilePath])
-unRebuild rootDir (Rebuild action) = runStateT (runReaderT action rootDir) []
+unRebuild rootDir (Rebuild action) = runWriterT (runReaderT action rootDir)
 
 -- | Run a 'Rebuild' IO action.
 runRebuild :: FilePath -> Rebuild a -> IO a
-runRebuild rootDir (Rebuild action) = evalStateT (runReaderT action rootDir) []
+runRebuild rootDir (Rebuild action) = fst <$> runWriterT (runReaderT action rootDir)
 
 -- | Run a 'Rebuild' IO action.
 execRebuild :: FilePath -> Rebuild a -> IO [MonitorFilePath]
-execRebuild rootDir (Rebuild action) = execStateT (runReaderT action rootDir) []
+execRebuild rootDir (Rebuild action) = execWriterT (runReaderT action rootDir)
 
 -- | The root that relative paths are interpreted as being relative to.
 askRoot :: Rebuild FilePath
