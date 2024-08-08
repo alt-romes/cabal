@@ -58,7 +58,6 @@ module Distribution.Client.RebuildMonad
   , findFileWithExtensionMonitored
   , findFirstFileMonitored
   , findFileMonitored
-  , concurrentRebuildActions
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -358,14 +357,3 @@ findFileMonitored searchPath fileName =
     [ path </> fileName
     | path <- nub searchPath
     ]
-
--- | Like 'sequenceA', but concurrently instead.
--- All Rebuild actions will be run concurrently.
--- The function returns when all actions have finished.
-concurrentRebuildActions :: [Rebuild a] -> Rebuild [a]
-concurrentRebuildActions actions = do
-  rootDir <- askRoot
-  dacts <- mapM (return . unRebuild rootDir) actions
-  (results, files) <- liftIO $ unzip <$> mapConcurrently id dacts
-  monitorFiles (concat files)
-  return results

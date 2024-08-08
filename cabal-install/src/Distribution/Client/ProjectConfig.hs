@@ -1165,54 +1165,57 @@ fetchAndReadSourcePackages
   distDirLayout
   projectConfigShared
   projectConfigBuildOnly
-  pkgLocations =
-    concat <$>
-    concurrentRebuildActions
-      [
-        -- pkgsLocalDirectory
-        sequenceA
+  pkgLocations = do
+    pkgsLocalDirectory <-
+      sequenceA
         [ readSourcePackageLocalDirectory verbosity dir cabalFile
         | location <- pkgLocations
         , (dir, cabalFile) <- projectPackageLocal location
         ]
 
-      , -- pkgsLocalTarball
-        sequenceA
+    pkgsLocalTarball <-
+      sequenceA
         [ readSourcePackageLocalTarball verbosity path
         | ProjectPackageLocalTarball path <- pkgLocations
         ]
 
-      , -- pkgsRemoteTarball
-        do
-        getTransport <-
-          delayInitSharedResource $
-            configureTransport
-              verbosity
-              progPathExtra
-              preferredHttpTransport
-        sequenceA $
-          [ fetchAndReadSourcePackageRemoteTarball
+    pkgsRemoteTarball <- do
+      getTransport <-
+        delayInitSharedResource $
+          configureTransport
             verbosity
-            distDirLayout
-            getTransport
-            uri
-          | ProjectPackageRemoteTarball uri <- pkgLocations
-          ]
-
-        -- pkgsRemoteRepo
-      , syncAndReadSourcePackagesRemoteRepos
+            progPathExtra
+            preferredHttpTransport
+      sequenceA
+        [ fetchAndReadSourcePackageRemoteTarball
           verbosity
           distDirLayout
-          projectConfigShared
-          (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
-          [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
+          getTransport
+          uri
+        | ProjectPackageRemoteTarball uri <- pkgLocations
+        ]
 
-      , -- pkgsNamed
-        pure
+    pkgsRemoteRepo <-
+      syncAndReadSourcePackagesRemoteRepos
+        verbosity
+        distDirLayout
+        projectConfigShared
+        (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
+        [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
+
+    let pkgsNamed =
           [ NamedPackage pkgname [PackagePropertyVersion verrange]
           | ProjectPackageNamed (PackageVersionConstraint pkgname verrange) <- pkgLocations
           ]
-      ]
+
+    return $
+      concat
+        [ pkgsLocalDirectory
+        , pkgsLocalTarball
+        , pkgsRemoteTarball
+        , pkgsRemoteRepo
+        , pkgsNamed
+        ]
     where
       projectPackageLocal (ProjectPackageLocalDirectory dir file) = [(dir, file)]
       projectPackageLocal (ProjectPackageLocalCabalFile file) = [(dir, file)]
