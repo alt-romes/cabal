@@ -65,12 +65,12 @@ import Prelude ()
 
 import Distribution.Client.FileMonitor
 import Distribution.Client.Glob hiding (matchFileGlob)
+import Distribution.Client.JobControl
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 import Distribution.Simple.PreProcess.Types (Suffix (..))
 
 import Distribution.Simple.Utils (debug)
 
-import Control.Concurrent.Async
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
 import Control.Monad
 import Control.Monad.Reader as Reader
@@ -130,7 +130,7 @@ rerunIfChanged verbosity monitor key action = do
   -- rerunIfChanged is implemented in terms of rerunConcurrentlyIfChanged, but
   -- nothing concurrent will happen since the list of concurrent actions has a
   -- single value that will be waited for alone.
-  rerunConcurrentlyIfChanged verbosity [(monitor, key, action)] >>= \case
+  rerunConcurrentlyIfChanged verbosity newSerialJobControl [(monitor, key, action)] >>= \case
     [x] -> return x
     _   -> error "rerunIfChanged: impossible!"
 
@@ -140,9 +140,10 @@ rerunIfChanged verbosity monitor key action = do
 rerunConcurrentlyIfChanged
   :: (Binary a, Structured a, Binary b, Structured b)
   => Verbosity
+  -> IO (JobControl IO (b, [MonitorFilePath]))
   -> [(FileMonitor a b, a, Rebuild b)]
   -> Rebuild [b]
-rerunConcurrentlyIfChanged verbosity triples = do
+rerunConcurrentlyIfChanged verbosity mkJobControl triples = do
   rootDir <- askRoot
   dacts <- forM triples $ \(monitor, key, action) -> do
     let monitorName = takeFileName (fileMonitorCacheFile monitor)
@@ -175,10 +176,9 @@ rerunConcurrentlyIfChanged verbosity triples = do
             result
           return (result, files)
 
-  (results, files) <-
-    liftIO $
-    unzip <$>
-    mapConcurrently id dacts
+  (results, files) <- liftIO $
+    withJobControl mkJobControl $ \jobControl -> do
+      unzip <$> mapConcurrentWithJobs jobControl id dacts
   monitorFiles (concat files)
   return results
   where
